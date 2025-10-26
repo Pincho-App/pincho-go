@@ -32,7 +32,7 @@ import (
 
 const (
 	// DefaultAPIURL is the default WirePusher API endpoint.
-	DefaultAPIURL = "https://wirepusher-gateway-1xatwfdc.uc.gateway.dev/v2/send"
+	DefaultAPIURL = "https://wirepusher.com/send"
 
 	// DefaultTimeout is the default HTTP request timeout.
 	DefaultTimeout = 30 * time.Second
