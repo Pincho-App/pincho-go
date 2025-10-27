@@ -40,7 +40,8 @@ import (
 )
 
 func main() {
-    client := wirepusher.NewClient("your-token", "your-user-id")
+    // Personal notifications (recommended)
+    client := wirepusher.NewClient("", "your-user-id")
 
     err := client.SendSimple(context.Background(), "Hello", "World")
     if err != nil {
@@ -51,12 +52,54 @@ func main() {
 
 ## Usage
 
+### Authentication
+
+WirePusher supports two authentication methods for sending notifications.
+
+#### User ID (Personal Notifications)
+
+Send notifications to a specific user's devices only:
+
+```go
+client := wirepusher.NewClient("", "your-user-id")
+
+err := client.SendSimple(context.Background(), "Personal Alert", "Your task is due")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Use cases:**
+- Personal notifications
+- User-specific alerts
+- Individual reminders
+
+#### Team Token (Team-Wide Notifications)
+
+Team tokens (starting with `wpt_`) send notifications to ALL members of a team:
+
+```go
+client := wirepusher.NewClient("wpt_abc123...", "")
+
+err := client.SendSimple(context.Background(), "Team Alert", "Server maintenance in 1 hour")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Use cases:**
+- Team-wide alerts and announcements
+- Shared project notifications
+- Collaborative workflows
+
+**Note:** Team tokens and user IDs are mutually exclusive - use one or the other, not both.
+
 ### Basic Send
 
 Send a simple notification with just a title and message:
 
 ```go
-client := wirepusher.NewClient("your-token", "your-user-id")
+client := wirepusher.NewClient("", "your-user-id")
 
 err := client.SendSimple(context.Background(), "Server Alert", "CPU usage high")
 if err != nil {
@@ -69,7 +112,7 @@ if err != nil {
 Send a notification with additional options (type, tags, image, action URL):
 
 ```go
-client := wirepusher.NewClient("your-token", "your-user-id")
+client := wirepusher.NewClient("", "your-user-id")
 
 err := client.Send(context.Background(), &wirepusher.SendOptions{
     Title:     "Deployment Complete",
@@ -90,7 +133,7 @@ if err != nil {
 
 ```go
 client := wirepusher.NewClient(
-    "your-token",
+    "",
     "your-user-id",
     wirepusher.WithTimeout(10*time.Second),
 )
@@ -109,7 +152,7 @@ httpClient := &http.Client{
 }
 
 client := wirepusher.NewClient(
-    "your-token",
+    "",
     "your-user-id",
     wirepusher.WithHTTPClient(httpClient),
 )
@@ -121,11 +164,63 @@ For testing or self-hosted environments:
 
 ```go
 client := wirepusher.NewClient(
-    "your-token",
+    "",
     "your-user-id",
     wirepusher.WithAPIURL("https://custom.example.com/api"),
 )
 ```
+
+### Encrypted Notifications
+
+WirePusher supports AES-128-CBC encryption for secure message delivery. Only the message content is encrypted; metadata (title, type, tags) remains unencrypted for filtering and display.
+
+#### Setup
+
+1. Create a notification type in the WirePusher app
+2. Set an encryption password for that type
+3. Use the same password when sending encrypted notifications
+
+#### Example
+
+```go
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    client := wirepusher.NewClient("", "your-user-id")
+
+    // Get encryption password from environment (recommended)
+    password := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:              "Secure Message",              // Not encrypted (for display)
+        Message:            "Sensitive information here", // Encrypted
+        Type:               "secure",                      // Must match app type with password
+        EncryptionPassword: password,                     // Must match app configuration
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+#### What's Encrypted
+
+- ✅ Message content only
+- ❌ Title, type, tags, image URL, action URL (unencrypted for filtering/display)
+
+#### Security Notes
+
+- Message content encrypted using AES-128-CBC with 16-byte random IV
+- Password must match the type configuration in the app
+- Use strong passwords (minimum 12 characters recommended)
+- Store passwords securely (environment variables, secret managers)
+- Uses only Go standard library (crypto/aes, crypto/cipher, crypto/sha1)
 
 ### Context Usage
 
@@ -200,8 +295,8 @@ default:
 
 ```go
 type Client struct {
-    Token      string        // WirePusher API token (required)
-    UserID     string        // WirePusher user ID (required)
+    Token      string        // WirePusher team token (mutually exclusive with UserID)
+    UserID     string        // WirePusher user ID (mutually exclusive with Token)
     APIURL     string        // API endpoint (defaults to production)
     HTTPClient *http.Client  // HTTP client (can be customized)
 }
@@ -213,14 +308,16 @@ type Client struct {
 func NewClient(token, userID string, opts ...ClientOption) *Client
 ```
 
-Creates a new WirePusher client with the given token and user ID.
+Creates a new WirePusher client. You must specify EITHER token OR userID, not both.
 
 **Parameters:**
-- `token` (string) - Your WirePusher API token
-- `userID` (string) - Your WirePusher user ID
+- `token` (string) - Your WirePusher team token (starts with "wpt_"), or empty string
+- `userID` (string) - Your WirePusher user ID, or empty string
 - `opts` (...ClientOption) - Optional configuration options
 
 **Returns:** `*Client`
+
+**Panics:** If both token and userID are provided, or if neither is provided
 
 ### SendSimple
 
@@ -255,12 +352,13 @@ Sends a notification with full options.
 
 ```go
 type SendOptions struct {
-    Title     string   // Required: Notification title (max 256 chars)
-    Message   string   // Required: Notification message (max 4096 chars)
-    Type      string   // Optional: Notification type (e.g., "alert", "info")
-    Tags      []string // Optional: Tags for categorization (max 10)
-    ImageURL  string   // Optional: URL to an image
-    ActionURL string   // Optional: URL to open on tap
+    Title              string   // Required: Notification title (max 256 chars)
+    Message            string   // Required: Notification message (max 4096 chars)
+    Type               string   // Optional: Notification type (e.g., "alert", "info")
+    Tags               []string // Optional: Tags for categorization (max 10)
+    ImageURL           string   // Optional: URL to an image
+    ActionURL          string   // Optional: URL to open on tap
+    EncryptionPassword string   // Optional: Password for AES-128-CBC encryption
 }
 ```
 

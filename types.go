@@ -11,13 +11,15 @@ package wirepusher
 //   - Tags: List of tags for categorization (max 10 tags, 128 chars each)
 //   - ImageURL: URL to an image to display with the notification
 //   - ActionURL: URL to open when user taps the notification
+//   - EncryptionPassword: Password for AES-128-CBC encryption (must match type configuration in app)
 type SendOptions struct {
-	Title     string   `json:"title"`
-	Message   string   `json:"message"`
-	Type      string   `json:"type,omitempty"`
-	Tags      []string `json:"tags,omitempty"`
-	ImageURL  string   `json:"imageURL,omitempty"`
-	ActionURL string   `json:"actionURL,omitempty"`
+	Title              string   `json:"title"`
+	Message            string   `json:"message"`
+	Type               string   `json:"type,omitempty"`
+	Tags               []string `json:"tags,omitempty"`
+	ImageURL           string   `json:"imageURL,omitempty"`
+	ActionURL          string   `json:"actionURL,omitempty"`
+	EncryptionPassword string   `json:"-"` // Not sent to API, used locally for encryption
 }
 
 // SendResponse is the response from the WirePusher API for a send operation.

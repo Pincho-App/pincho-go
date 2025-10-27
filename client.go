@@ -2,7 +2,11 @@
 //
 // Example usage:
 //
-//	client := wirepusher.NewClient("your-token", "your-user-id")
+//	// Personal notifications
+//	client := wirepusher.NewClient("", "your-user-id")
+//
+//	// Team notifications
+//	client := wirepusher.NewClient("wpt_your_token", "")
 //
 //	// Simple send
 //	err := client.SendSimple(ctx, "Hello", "World")
@@ -40,10 +44,12 @@ const (
 
 // Client is the WirePusher API client.
 type Client struct {
-	// Token is the WirePusher API token (required).
+	// Token is the WirePusher team token (mutually exclusive with UserID).
+	// Use this for team notifications (starts with "wpt_").
 	Token string
 
-	// UserID is the WirePusher user ID (required).
+	// UserID is the WirePusher user ID (mutually exclusive with Token).
+	// Use this for personal notifications.
 	UserID string
 
 	// APIURL is the WirePusher API endpoint (defaults to DefaultAPIURL).
@@ -80,17 +86,35 @@ func WithTimeout(timeout time.Duration) ClientOption {
 
 // NewClient creates a new WirePusher client.
 //
-// The token and userID parameters are required.
-// Optional configuration can be provided using ClientOption functions.
+// You must specify EITHER token OR userID, not both:
+//   - token: Team token (starts with "wpt_") for team-wide notifications
+//   - userID: User ID for personal notifications
 //
-// Example:
+// Panics if both token and userID are provided, or if neither is provided.
 //
+// Examples:
+//
+//	// Personal notifications
+//	client := wirepusher.NewClient("", "user_abc123")
+//
+//	// Team notifications
+//	client := wirepusher.NewClient("wpt_abc123...", "")
+//
+//	// With custom timeout
 //	client := wirepusher.NewClient(
-//	    "your-token",
-//	    "your-user-id",
+//	    "",
+//	    "user_abc123",
 //	    wirepusher.WithTimeout(10*time.Second),
 //	)
 func NewClient(token, userID string, opts ...ClientOption) *Client {
+	// Validate mutual exclusivity
+	if token != "" && userID != "" {
+		panic("wirepusher: cannot specify both token and userID - they are mutually exclusive. Use token for team notifications or userID for personal notifications")
+	}
+	if token == "" && userID == "" {
+		panic("wirepusher: must specify either token or userID. Use token for team notifications or userID for personal notifications")
+	}
+
 	client := &Client{
 		Token:  token,
 		UserID: userID,
@@ -149,10 +173,29 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		return &ValidationError{Message: "message is required", StatusCode: 0}
 	}
 
+	// Handle encryption if password provided
+	finalMessage := options.Message
+	var ivHex string
+
+	if options.EncryptionPassword != "" {
+		iv, ivStr, err := generateIV()
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to generate IV: %v", err), StatusCode: 0}
+		}
+
+		encryptedMessage, err := encryptMessage(options.Message, options.EncryptionPassword, iv)
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to encrypt message: %v", err), StatusCode: 0}
+		}
+
+		finalMessage = encryptedMessage
+		ivHex = ivStr
+	}
+
 	// Build request body
 	body := map[string]interface{}{
 		"title":   options.Title,
-		"message": options.Message,
+		"message": finalMessage,
 		"id":      c.UserID,
 		"token":   c.Token,
 	}
@@ -168,6 +211,9 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	}
 	if options.ActionURL != "" {
 		body["actionURL"] = options.ActionURL
+	}
+	if ivHex != "" {
+		body["iv"] = ivHex
 	}
 
 	jsonData, err := json.Marshal(body)

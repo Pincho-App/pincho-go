@@ -7,10 +7,16 @@ This directory contains runnable examples demonstrating various features of the 
 Before running any examples, you need:
 
 1. A WirePusher account with API credentials
-2. Environment variables set:
+2. Environment variables set (choose either token OR user ID):
    ```bash
-   export WIREPUSHER_TOKEN="your-token"
+   # Personal notifications
    export WIREPUSHER_USER_ID="your-user-id"
+
+   # OR team notifications
+   export WIREPUSHER_TOKEN="wpt_your_token"
+
+   # For encryption examples, also set:
+   export WIREPUSHER_ENCRYPTION_PASSWORD="your_password"
    ```
 
 ## Running Examples
@@ -75,6 +81,23 @@ go run main.go
 - Type switching for different error types
 - Graceful error handling patterns
 
+### Encrypted Notifications
+
+Sending notifications with AES-128-CBC encryption:
+
+```bash
+cd examples/encryption
+go run main.go
+```
+
+**What it demonstrates:**
+- Encrypting message content with password
+- Only message is encrypted (title/type/tags remain plaintext)
+- Password management with environment variables
+- Multiple encryption scenarios
+- Backward compatibility (unencrypted messages still work)
+- Uses only Go standard library (no external dependencies)
+
 ## Example Code Structure
 
 Each example follows the same structure:
@@ -91,12 +114,11 @@ import (
 )
 
 func main() {
-    // 1. Get credentials from environment
-    token := os.Getenv("WIREPUSHER_TOKEN")
+    // 1. Get credentials from environment (choose either token OR userID)
     userID := os.Getenv("WIREPUSHER_USER_ID")
 
     // 2. Create client
-    client := wirepusher.NewClient(token, userID)
+    client := wirepusher.NewClient("", userID)
 
     // 3. Send notification
     err := client.SendSimple(context.Background(), "Title", "Message")
@@ -116,6 +138,7 @@ cd examples/basic && go build -o basic
 cd ../advanced && go build -o advanced
 cd ../context && go build -o context
 cd ../errors && go build -o errors
+cd ../encryption && go build -o encryption
 
 # Run the built binary
 ./basic
@@ -134,7 +157,7 @@ To use the SDK in your own project:
    ```go
    import "gitlab.com/wirepusher/go-sdk"
 
-   client := wirepusher.NewClient(token, userID)
+   client := wirepusher.NewClient("", userID)  // Use "" for either token or userID
    err := client.SendSimple(ctx, "Title", "Message")
    ```
 
