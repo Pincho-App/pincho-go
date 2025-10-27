@@ -50,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
 	}
-	fmt.Println("  ✓ Sent successfully\n")
+	fmt.Println("  ✓ Sent successfully")
 
 	// Example 2: Encrypted notification with all optional parameters
 	fmt.Println("Example 2: Encrypted notification with tags and metadata...")
@@ -64,7 +64,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
 	}
-	fmt.Println("  ✓ Sent successfully\n")
+	fmt.Println("  ✓ Sent successfully")
 
 	// Example 3: Encrypted notification with image and action URL
 	fmt.Println("Example 3: Encrypted notification with additional metadata...")
@@ -80,7 +80,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
 	}
-	fmt.Println("  ✓ Sent successfully\n")
+	fmt.Println("  ✓ Sent successfully")
 
 	// Example 4: Error handling with encryption
 	fmt.Println("Example 4: Error handling...")
@@ -107,7 +107,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
 	}
-	fmt.Println("  ✓ Encrypted notification sent successfully\n")
+	fmt.Println("  ✓ Encrypted notification sent successfully")
 
 	fmt.Println("✓ All examples completed!")
 	fmt.Println("\nKey points:")
