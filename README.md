@@ -40,8 +40,8 @@ import (
 )
 
 func main() {
-    // Personal notifications (recommended)
-    client := wirepusher.NewClient("", "your-user-id")
+    // Team notifications (recommended for teams)
+    client := wirepusher.NewClient("wpt_your_token_here", "")
 
     err := client.SendSimple(context.Background(), "Hello", "World")
     if err != nil {
@@ -54,29 +54,11 @@ func main() {
 
 ### Authentication
 
-WirePusher supports two authentication methods for sending notifications.
+WirePusher supports two authentication methods for sending notifications. **Important:** These are mutually exclusive - use EITHER token OR userId, not both.
 
-#### User ID (Personal Notifications)
+#### Team Token (Recommended for Teams)
 
-Send notifications to a specific user's devices only:
-
-```go
-client := wirepusher.NewClient("", "your-user-id")
-
-err := client.SendSimple(context.Background(), "Personal Alert", "Your task is due")
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-**Use cases:**
-- Personal notifications
-- User-specific alerts
-- Individual reminders
-
-#### Team Token (Team-Wide Notifications)
-
-Team tokens (starting with `wpt_`) send notifications to ALL members of a team:
+Team tokens (starting with `wpt_`) send notifications to **ALL members** of a team:
 
 ```go
 client := wirepusher.NewClient("wpt_abc123...", "")
@@ -91,8 +73,26 @@ if err != nil {
 - Team-wide alerts and announcements
 - Shared project notifications
 - Collaborative workflows
+- Broadcasting to multiple team members
 
-**Note:** Team tokens and user IDs are mutually exclusive - use one or the other, not both.
+#### User ID (Personal Notifications)
+
+User IDs send notifications to a **specific user's devices only**:
+
+```go
+client := wirepusher.NewClient("", "your-user-id")
+
+err := client.SendSimple(context.Background(), "Personal Alert", "Your task is due")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Use cases:**
+- Personal notifications
+- User-specific alerts
+- Individual reminders
+- Single-user workflows
 
 ### Basic Send
 
