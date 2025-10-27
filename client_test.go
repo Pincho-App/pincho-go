@@ -12,11 +12,11 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	t.Run("with defaults", func(t *testing.T) {
-		client := NewClient("test-token", "test-user")
+	t.Run("with user ID", func(t *testing.T) {
+		client := NewClient("", "test-user")
 
-		if client.Token != "test-token" {
-			t.Errorf("expected token 'test-token', got '%s'", client.Token)
+		if client.Token != "" {
+			t.Errorf("expected empty token, got '%s'", client.Token)
 		}
 
 		if client.UserID != "test-user" {
@@ -36,9 +36,43 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
+	t.Run("with token", func(t *testing.T) {
+		client := NewClient("wpt_test123", "")
+
+		if client.Token != "wpt_test123" {
+			t.Errorf("expected token 'wpt_test123', got '%s'", client.Token)
+		}
+
+		if client.UserID != "" {
+			t.Errorf("expected empty userID, got '%s'", client.UserID)
+		}
+
+		if client.APIURL != DefaultAPIURL {
+			t.Errorf("expected APIURL '%s', got '%s'", DefaultAPIURL, client.APIURL)
+		}
+	})
+
+	t.Run("panics with both token and userID", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected NewClient to panic when both token and userID provided")
+			}
+		}()
+		NewClient("wpt_test123", "test-user")
+	})
+
+	t.Run("panics with neither token nor userID", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected NewClient to panic when neither token nor userID provided")
+			}
+		}()
+		NewClient("", "")
+	})
+
 	t.Run("with custom API URL", func(t *testing.T) {
 		customURL := "https://custom.example.com/api"
-		client := NewClient("token", "user", WithAPIURL(customURL))
+		client := NewClient("", "user", WithAPIURL(customURL))
 
 		if client.APIURL != customURL {
 			t.Errorf("expected APIURL '%s', got '%s'", customURL, client.APIURL)
@@ -47,7 +81,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("with custom timeout", func(t *testing.T) {
 		customTimeout := 5 * time.Second
-		client := NewClient("token", "user", WithTimeout(customTimeout))
+		client := NewClient("", "user", WithTimeout(customTimeout))
 
 		if client.HTTPClient.Timeout != customTimeout {
 			t.Errorf("expected timeout %v, got %v", customTimeout, client.HTTPClient.Timeout)
@@ -56,7 +90,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("with custom HTTP client", func(t *testing.T) {
 		customClient := &http.Client{Timeout: 10 * time.Second}
-		client := NewClient("token", "user", WithHTTPClient(customClient))
+		client := NewClient("", "user", WithHTTPClient(customClient))
 
 		if client.HTTPClient != customClient {
 			t.Error("expected custom HTTP client to be used")
@@ -101,7 +135,7 @@ func TestClient_SendSimple(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+			client := NewClient("", "test-user", WithAPIURL(server.URL))
 			err := client.SendSimple(context.Background(), tt.title, tt.message)
 
 			if tt.expectError && err == nil {
@@ -145,7 +179,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+		client := NewClient("", "test-user", WithAPIURL(server.URL))
 
 		options := &SendOptions{
 			Title:     "Test Title",
@@ -192,13 +226,14 @@ func TestClient_Send(t *testing.T) {
 			t.Errorf("expected id 'test-user', got '%v'", receivedBody["id"])
 		}
 
-		if receivedBody["token"] != "test-token" {
-			t.Errorf("expected token 'test-token', got '%v'", receivedBody["token"])
+		// Token should be nil/empty since we're using user_id
+		if receivedBody["token"] != nil && receivedBody["token"] != "" {
+			t.Errorf("expected nil/empty token, got '%v'", receivedBody["token"])
 		}
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		client := NewClient("test-token", "test-user")
+		client := NewClient("", "test-user")
 
 		tests := []struct {
 			name          string
@@ -309,7 +344,7 @@ func TestClient_Send(t *testing.T) {
 				}))
 				defer server.Close()
 
-				client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+				client := NewClient("", "test-user", WithAPIURL(server.URL))
 
 				err := client.Send(context.Background(), &SendOptions{
 					Title:   "Test",
@@ -355,7 +390,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+		client := NewClient("", "test-user", WithAPIURL(server.URL))
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
@@ -382,7 +417,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+		client := NewClient("", "test-user", WithAPIURL(server.URL))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		defer cancel()
@@ -403,7 +438,7 @@ func TestClient_Send(t *testing.T) {
 
 	t.Run("network error", func(t *testing.T) {
 		// Use invalid URL to trigger network error
-		client := NewClient("test-token", "test-user", WithAPIURL("http://localhost:1"))
+		client := NewClient("", "test-user", WithAPIURL("http://localhost:1"))
 
 		err := client.Send(context.Background(), &SendOptions{
 			Title:   "Test",
@@ -426,7 +461,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("test-token", "test-user", WithAPIURL(server.URL))
+		client := NewClient("", "test-user", WithAPIURL(server.URL))
 
 		err := client.Send(context.Background(), &SendOptions{
 			Title:   "Test",
