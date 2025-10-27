@@ -25,7 +25,7 @@ func customBase64Encode(data []byte) string {
 	return custom
 }
 
-// deriveEncryptionKey derives AES encryption key from password using SHA1.
+// DeriveEncryptionKey derives AES encryption key from password using SHA1.
 //
 // Key derivation process:
 //  1. SHA1 hash of password
@@ -34,7 +34,9 @@ func customBase64Encode(data []byte) string {
 //  4. Convert hex string to bytes
 //
 // Returns 16-byte AES-128 key.
-func deriveEncryptionKey(password string) ([]byte, error) {
+//
+// Exported for testing purposes.
+func DeriveEncryptionKey(password string) ([]byte, error) {
 	hash := sha1.Sum([]byte(password))
 	keyHex := strings.ToLower(hex.EncodeToString(hash[:]))[:32]
 
@@ -56,7 +58,7 @@ func pkcs7Pad(data []byte, blockSize int) []byte {
 	return append(data, padding...)
 }
 
-// encryptMessage encrypts text using AES-128-CBC with custom Base64 encoding.
+// EncryptMessage encrypts text using AES-128-CBC with custom Base64 encoding.
 //
 // Encryption process matching WirePusher app:
 //  1. Derive key from password using SHA1
@@ -65,9 +67,11 @@ func pkcs7Pad(data []byte, blockSize int) []byte {
 //  4. Encode with custom Base64
 //
 // Returns encrypted and custom Base64 encoded string.
-func encryptMessage(plaintext, password string, iv []byte) (string, error) {
+//
+// Exported for testing purposes.
+func EncryptMessage(plaintext, password string, iv []byte) (string, error) {
 	// Derive encryption key
-	key, err := deriveEncryptionKey(password)
+	key, err := DeriveEncryptionKey(password)
 	if err != nil {
 		return "", err
 	}
@@ -90,10 +94,12 @@ func encryptMessage(plaintext, password string, iv []byte) (string, error) {
 	return customBase64Encode(encrypted), nil
 }
 
-// generateIV generates a random 16-byte initialization vector.
+// GenerateIV generates a random 16-byte initialization vector.
 //
 // Returns IV bytes and hexadecimal string representation (32 characters).
-func generateIV() ([]byte, string, error) {
+//
+// Exported for testing purposes.
+func GenerateIV() ([]byte, string, error) {
 	iv := make([]byte, aes.BlockSize)
 	if _, err := rand.Read(iv); err != nil {
 		return nil, "", fmt.Errorf("failed to generate IV: %w", err)

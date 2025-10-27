@@ -178,12 +178,12 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	var ivHex string
 
 	if options.EncryptionPassword != "" {
-		iv, ivStr, err := generateIV()
+		iv, ivStr, err := GenerateIV()
 		if err != nil {
 			return &Error{Message: fmt.Sprintf("failed to generate IV: %v", err), StatusCode: 0}
 		}
 
-		encryptedMessage, err := encryptMessage(options.Message, options.EncryptionPassword, iv)
+		encryptedMessage, err := EncryptMessage(options.Message, options.EncryptionPassword, iv)
 		if err != nil {
 			return &Error{Message: fmt.Sprintf("failed to encrypt message: %v", err), StatusCode: 0}
 		}
