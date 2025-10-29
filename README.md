@@ -4,28 +4,21 @@
 [![Go Report Card](https://goreportcard.com/badge/gitlab.com/wirepusher/go-sdk)](https://goreportcard.com/report/gitlab.com/wirepusher/go-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Official Go SDK for [WirePusher](https://wirepusher.com) push notifications.
-
-Send push notifications to your mobile devices with just a few lines of Go code. Zero dependencies, uses only the Go standard library.
+Official Go SDK for [WirePusher](https://wirepusher.dev) push notifications.
 
 ## Features
 
-- **Zero dependencies** - Uses only the Go standard library (`net/http`)
-- **Context support** - First-class context.Context for cancellation and timeouts
-- **Functional options** - Flexible client configuration
-- **Type-safe** - Full Go type safety with comprehensive error types
-- **Customizable** - Bring your own `http.Client` for advanced use cases
-- **Well-tested** - >95% test coverage with race detector
-- **Production-ready** - Used in production environments
+- ✅ **Zero Dependencies** - Uses only Go standard library
+- ✅ **Context Support** - First-class context.Context for cancellation and timeouts
+- ✅ **Type-Safe** - Full Go type safety with comprehensive error types
+- ✅ **Functional Options** - Flexible client configuration
+- ✅ **Production-Ready** - >95% test coverage with race detector
 
 ## Installation
 
 ```bash
 go get gitlab.com/wirepusher/go-sdk
 ```
-
-**Requirements:**
-- Go 1.18 or higher
 
 ## Quick Start
 
@@ -35,154 +28,34 @@ package main
 import (
     "context"
     "log"
+    "os"
 
     "gitlab.com/wirepusher/go-sdk"
 )
 
 func main() {
-    // Team notifications (recommended for teams)
-    client := wirepusher.NewClient("wpt_your_token_here", "")
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
 
-    err := client.SendSimple(context.Background(), "Hello", "World")
+    err := client.SendSimple(context.Background(),
+        "Deploy Complete",
+        "Version 1.2.3 deployed to production",
+    )
     if err != nil {
         log.Fatal(err)
     }
 }
 ```
 
+**Get your token:** Open app → Settings → Help → copy token
+
 ## Usage
 
-### Authentication
-
-WirePusher supports two authentication methods for sending notifications. **Important:** These are mutually exclusive - use EITHER token OR userId, not both.
-
-#### Team Token (Recommended for Teams)
-
-Team tokens (starting with `wpt_`) send notifications to **ALL members** of a team:
+### Basic Example
 
 ```go
-client := wirepusher.NewClient("wpt_abc123...", "")
+package main
 
-err := client.SendSimple(context.Background(), "Team Alert", "Server maintenance in 1 hour")
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-**Use cases:**
-- Team-wide alerts and announcements
-- Shared project notifications
-- Collaborative workflows
-- Broadcasting to multiple team members
-
-#### User ID (Personal Notifications)
-
-User IDs send notifications to a **specific user's devices only**:
-
-```go
-client := wirepusher.NewClient("", "your-user-id")
-
-err := client.SendSimple(context.Background(), "Personal Alert", "Your task is due")
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-**Use cases:**
-- Personal notifications
-- User-specific alerts
-- Individual reminders
-- Single-user workflows
-
-### Basic Send
-
-Send a simple notification with just a title and message:
-
-```go
-client := wirepusher.NewClient("", "your-user-id")
-
-err := client.SendSimple(context.Background(), "Server Alert", "CPU usage high")
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### Advanced Send with Options
-
-Send a notification with additional options (type, tags, image, action URL):
-
-```go
-client := wirepusher.NewClient("", "your-user-id")
-
-err := client.Send(context.Background(), &wirepusher.SendOptions{
-    Title:     "Deployment Complete",
-    Message:   "Version 2.1.0 deployed to production",
-    Type:      "deployment",
-    Tags:      []string{"production", "backend"},
-    ImageURL:  "https://example.com/success.png",
-    ActionURL: "https://dashboard.example.com/deployments/123",
-})
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### Custom Configuration
-
-#### Custom Timeout
-
-```go
-client := wirepusher.NewClient(
-    "",
-    "your-user-id",
-    wirepusher.WithTimeout(10*time.Second),
-)
-```
-
-#### Custom HTTP Client
-
-Useful for proxies, custom TLS configuration, or other advanced scenarios:
-
-```go
-httpClient := &http.Client{
-    Timeout: 15 * time.Second,
-    Transport: &http.Transport{
-        TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
-    },
-}
-
-client := wirepusher.NewClient(
-    "",
-    "your-user-id",
-    wirepusher.WithHTTPClient(httpClient),
-)
-```
-
-#### Custom API URL
-
-For testing or self-hosted environments:
-
-```go
-client := wirepusher.NewClient(
-    "",
-    "your-user-id",
-    wirepusher.WithAPIURL("https://custom.example.com/api"),
-)
-```
-
-### Encrypted Notifications
-
-WirePusher supports AES-128-CBC encryption for secure message delivery. Only the message content is encrypted; metadata (title, type, tags) remains unencrypted for filtering and display.
-
-#### Setup
-
-1. Create a notification type in the WirePusher app
-2. Set an encryption password for that type
-3. Use the same password when sending encrypted notifications
-
-#### Example
-
-```go
 import (
     "context"
     "log"
@@ -192,16 +65,43 @@ import (
 )
 
 func main() {
-    client := wirepusher.NewClient("", "your-user-id")
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
 
-    // Get encryption password from environment (recommended)
-    password := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
+    err := client.SendSimple(context.Background(),
+        "Deploy Complete",
+        "Version 1.2.3 deployed to production",
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### All Parameters
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
-        Title:              "Secure Message",              // Not encrypted (for display)
-        Message:            "Sensitive information here", // Encrypted
-        Type:               "secure",                      // Must match app type with password
-        EncryptionPassword: password,                     // Must match app configuration
+        Title:     "Deploy Complete",
+        Message:   "Version 1.2.3 deployed to production",
+        Type:      "deployment",
+        Tags:      []string{"production", "backend"},
+        ImageURL:  "https://cdn.example.com/success.png",
+        ActionURL: "https://dash.example.com/deploy/123",
     })
     if err != nil {
         log.Fatal(err)
@@ -209,85 +109,135 @@ func main() {
 }
 ```
 
-#### What's Encrypted
+### Custom Configuration
 
-- ✅ Message content only
-- ❌ Title, type, tags, image URL, action URL (unencrypted for filtering/display)
+```go
+package main
 
-#### Security Notes
+import (
+    "context"
+    "crypto/tls"
+    "net/http"
+    "os"
+    "time"
 
-- Message content encrypted using AES-128-CBC with 16-byte random IV
-- Password must match the type configuration in the app
-- Use strong passwords (minimum 12 characters recommended)
-- Store passwords securely (environment variables, secret managers)
-- Uses only Go standard library (crypto/aes, crypto/cipher, crypto/sha1)
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+
+    // Custom timeout
+    client := wirepusher.NewClient(token, "",
+        wirepusher.WithTimeout(10*time.Second),
+    )
+
+    // Custom HTTP client (for proxies, TLS config, etc.)
+    httpClient := &http.Client{
+        Timeout: 15 * time.Second,
+        Transport: &http.Transport{
+            TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+        },
+    }
+    client = wirepusher.NewClient(token, "",
+        wirepusher.WithHTTPClient(httpClient),
+    )
+
+    // Custom API URL (for testing)
+    client = wirepusher.NewClient(token, "",
+        wirepusher.WithAPIURL("https://custom.example.com/api"),
+    )
+}
+```
 
 ### Context Usage
 
-#### With Timeout
-
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-defer cancel()
+package main
 
-err := client.SendSimple(ctx, "Title", "Message")
-if err != nil {
-    if ctx.Err() == context.DeadlineExceeded {
-        log.Println("Request timed out")
-    } else {
-        log.Println("Request failed:", err)
+import (
+    "context"
+    "log"
+    "os"
+    "time"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
+
+    // With timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    err := client.SendSimple(ctx, "Deploy Complete", "Version 1.2.3 deployed")
+    if err != nil {
+        if ctx.Err() == context.DeadlineExceeded {
+            log.Println("Request timed out")
+        } else {
+            log.Println("Request failed:", err)
+        }
+    }
+
+    // With cancellation
+    ctx2, cancel2 := context.WithCancel(context.Background())
+    go func() {
+        time.Sleep(1 * time.Second)
+        cancel2()
+    }()
+
+    err = client.SendSimple(ctx2, "Deploy Complete", "Version 1.2.3 deployed")
+    if err != nil {
+        if ctx2.Err() == context.Canceled {
+            log.Println("Request was canceled")
+        }
     }
 }
 ```
 
-#### With Cancellation
+## Encryption
+
+Encrypt notification messages using AES-128-CBC. Only the `message` field is encrypted—`title`, `type`, `tags`, `image_url`, and `action_url` remain unencrypted for filtering and display.
+
+**Setup:**
+1. In the app, create a notification type
+2. Set an encryption password for that type
+3. Pass the same `type` and password when sending
 
 ```go
-ctx, cancel := context.WithCancel(context.Background())
+package main
 
-// Cancel in another goroutine
-go func() {
-    time.Sleep(1 * time.Second)
-    cancel()
-}()
+import (
+    "context"
+    "log"
+    "os"
 
-err := client.SendSimple(ctx, "Title", "Message")
-if err != nil {
-    if ctx.Err() == context.Canceled {
-        log.Println("Request was canceled")
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    password := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
+    client := wirepusher.NewClient(token, "")
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:              "Security Alert",
+        Message:            "Unauthorized access attempt detected",
+        Type:               "security",
+        EncryptionPassword: password,
+    })
+    if err != nil {
+        log.Fatal(err)
     }
 }
 ```
 
-### Error Handling
-
-The SDK provides typed errors for different scenarios:
-
-```go
-err := client.Send(ctx, options)
-
-switch e := err.(type) {
-case *wirepusher.ValidationError:
-    // 400 - Invalid request (missing required fields, etc.)
-    log.Printf("Validation error: %s (status: %d)", e.Message, e.StatusCode)
-
-case *wirepusher.AuthError:
-    // 401/403 - Authentication failed (invalid token/user ID)
-    log.Printf("Auth error: %s (status: %d)", e.Message, e.StatusCode)
-
-case *wirepusher.RateLimitError:
-    // 429 - Rate limit exceeded
-    log.Printf("Rate limit error: %s (status: %d)", e.Message, e.StatusCode)
-
-case *wirepusher.Error:
-    // Other errors (5xx server errors, network errors, etc.)
-    log.Printf("Error: %s", e.Message)
-
-default:
-    // Shouldn't happen, but handle anyway
-    log.Printf("Unknown error: %v", err)
-}
-```
+**Security notes:**
+- Use strong passwords (minimum 12 characters)
+- Store passwords securely (environment variables, secret managers)
+- Password must match the type configuration in the app
 
 ## API Reference
 
@@ -295,8 +245,8 @@ default:
 
 ```go
 type Client struct {
-    Token      string        // WirePusher team token (mutually exclusive with UserID)
-    UserID     string        // WirePusher user ID (mutually exclusive with Token)
+    Token      string        // WirePusher token (required)
+    UserID     string        // Legacy user ID (not recommended)
     APIURL     string        // API endpoint (defaults to production)
     HTTPClient *http.Client  // HTTP client (can be customized)
 }
@@ -308,16 +258,16 @@ type Client struct {
 func NewClient(token, userID string, opts ...ClientOption) *Client
 ```
 
-Creates a new WirePusher client. You must specify EITHER token OR userID, not both.
+Creates a new WirePusher client. Use `token` for authentication (recommended). The `userID` parameter is legacy and not recommended for new integrations.
 
 **Parameters:**
-- `token` (string) - Your WirePusher team token (starts with "wpt_"), or empty string
-- `userID` (string) - Your WirePusher user ID, or empty string
-- `opts` (...ClientOption) - Optional configuration options
+- `token` (string): Your WirePusher token (starts with `wpu_` or `wpt_`)
+- `userID` (string): Legacy user ID (pass empty string for token-based auth)
+- `opts` (...ClientOption): Optional configuration options
 
 **Returns:** `*Client`
 
-**Panics:** If both token and userID are provided, or if neither is provided
+**Panics:** If both token and userID are empty
 
 ### SendSimple
 
@@ -328,9 +278,9 @@ func (c *Client) SendSimple(ctx context.Context, title, message string) error
 Sends a simple notification with just a title and message.
 
 **Parameters:**
-- `ctx` (context.Context) - Context for cancellation and timeouts
-- `title` (string) - Notification title (max 256 characters)
-- `message` (string) - Notification message (max 4096 characters)
+- `ctx` (context.Context): Context for cancellation and timeouts
+- `title` (string): Notification title (max 256 characters)
+- `message` (string): Notification message (max 4096 characters)
 
 **Returns:** `error`
 
@@ -343,8 +293,8 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error
 Sends a notification with full options.
 
 **Parameters:**
-- `ctx` (context.Context) - Context for cancellation and timeouts
-- `options` (*SendOptions) - Notification options
+- `ctx` (context.Context): Context for cancellation and timeouts
+- `options` (*SendOptions): Notification options
 
 **Returns:** `error`
 
@@ -354,7 +304,7 @@ Sends a notification with full options.
 type SendOptions struct {
     Title              string   // Required: Notification title (max 256 chars)
     Message            string   // Required: Notification message (max 4096 chars)
-    Type               string   // Optional: Notification type (e.g., "alert", "info")
+    Type               string   // Optional: Notification type (e.g., "deployment", "alert")
     Tags               []string // Optional: Tags for categorization (max 10)
     ImageURL           string   // Optional: URL to an image
     ActionURL          string   // Optional: URL to open on tap
@@ -434,65 +384,238 @@ type RateLimitError struct {
 
 Rate limit error (429).
 
+## Error Handling
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
+
+    err := client.SendSimple(context.Background(),
+        "Deploy Complete",
+        "Version 1.2.3 deployed to production",
+    )
+
+    switch e := err.(type) {
+    case *wirepusher.ValidationError:
+        // 400 - Invalid request
+        log.Printf("Validation error: %s (status: %d)", e.Message, e.StatusCode)
+
+    case *wirepusher.AuthError:
+        // 401/403 - Authentication failed
+        log.Printf("Auth error: %s (status: %d)", e.Message, e.StatusCode)
+
+    case *wirepusher.RateLimitError:
+        // 429 - Rate limit exceeded
+        log.Printf("Rate limit error: %s (status: %d)", e.Message, e.StatusCode)
+
+    case *wirepusher.Error:
+        // Other errors (5xx server errors, network errors, etc.)
+        log.Printf("Error: %s", e.Message)
+
+    case nil:
+        log.Println("Notification sent successfully")
+
+    default:
+        log.Printf("Unknown error: %v", err)
+    }
+}
+```
+
 ## Examples
 
-See the [examples/](examples/) directory for complete, runnable examples:
+### CI/CD Pipeline
 
-- [Basic usage](examples/basic/main.go)
-- [Advanced options](examples/advanced/main.go)
-- [Context usage](examples/context/main.go)
-- [Error handling](examples/errors/main.go)
+```go
+package main
 
-## Testing
+import (
+    "context"
+    "log"
+    "os"
 
-Run tests:
+    "gitlab.com/wirepusher/go-sdk"
+)
 
-```bash
-go test
+func notifyDeployment(version, environment string) {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:   "Deploy Complete",
+        Message: "Version " + version + " deployed to " + environment,
+        Type:    "deployment",
+        Tags:    []string{environment, version},
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func main() {
+    notifyDeployment("1.2.3", "production")
+}
 ```
 
-Run tests with coverage:
+### Server Monitoring
 
-```bash
-go test -cover
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func checkServerHealth(cpu, memory float64) {
+    if cpu > 80 || memory > 80 {
+        token := os.Getenv("WIREPUSHER_TOKEN")
+        client := wirepusher.NewClient(token, "")
+
+        err := client.Send(context.Background(), &wirepusher.SendOptions{
+            Title:   "Server Alert",
+            Message: fmt.Sprintf("CPU: %.1f%%, Memory: %.1f%%", cpu, memory),
+            Type:    "alert",
+            Tags:    []string{"server", "critical"},
+        })
+        if err != nil {
+            log.Println("Failed to send alert:", err)
+        }
+    }
+}
+
+func main() {
+    // Your monitoring logic here
+    checkServerHealth(85.0, 75.0)
+}
 ```
 
-Run tests with race detector:
+### HTTP Handler
 
-```bash
-go test -race
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "log"
+    "net/http"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func deployHandler(w http.ResponseWriter, r *http.Request) {
+    var payload struct {
+        Version string `json:"version"`
+    }
+    json.NewDecoder(r.Body).Decode(&payload)
+
+    // Your deployment logic here
+
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:   "Deploy Complete",
+        Message: "Version " + payload.Version + " deployed to production",
+        Type:    "deployment",
+    })
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+func main() {
+    http.HandleFunc("/deploy", deployHandler)
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}
 ```
 
-Generate coverage report:
+### Batch Processing
 
-```bash
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/go-sdk"
+)
+
+func processBatch(records int) {
+    // Your batch processing logic here
+
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token, "")
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:   "Batch Job Complete",
+        Message: fmt.Sprintf("Processed %d records", records),
+        Type:    "batch",
+        Tags:    []string{"data-pipeline", "success"},
+    })
+    if err != nil {
+        log.Println("Failed to send notification:", err)
+    }
+}
+
+func main() {
+    processBatch(10000)
+}
 ```
 
 ## Development
 
-### Project Structure
-
-```
-.
-├── client.go           # Main client implementation
-├── types.go            # Request/response types
-├── errors.go           # Custom error types
-├── client_test.go      # Comprehensive tests
-├── examples/           # Usage examples
-│   ├── basic/
-│   ├── advanced/
-│   ├── context/
-│   └── errors/
-├── go.mod              # Go module definition
-└── README.md           # This file
-```
-
-### Building
+### Setup
 
 ```bash
-go build
+# Clone repository
+git clone https://gitlab.com/wirepusher/go-sdk.git
+cd go-sdk
+
+# Install dependencies
+go mod download
+
+# Run tests
+go test -v
+```
+
+### Testing
+
+```bash
+# Run tests
+go test
+
+# Run tests with coverage
+go test -cover
+
+# Run tests with race detector
+go test -race
+
+# Generate coverage report
+go test -coverprofile=coverage.out
+go tool cover -html=coverage.out
 ```
 
 ### Linting
@@ -502,29 +625,17 @@ go vet ./...
 golangci-lint run  # If golangci-lint is installed
 ```
 
-## Contributing
+## Requirements
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- Go 1.18 or higher
 
-## Security
+## Links
 
-For security vulnerabilities, please email security@wirepusher.com. See [SECURITY.md](SECURITY.md) for details.
+- **Documentation**: https://pkg.go.dev/gitlab.com/wirepusher/go-sdk
+- **Repository**: https://gitlab.com/wirepusher/go-sdk
+- **Issues**: https://gitlab.com/wirepusher/go-sdk/-/issues
+- **Website**: https://wirepusher.dev
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Support
-
-- **Documentation:** [pkg.go.dev/gitlab.com/wirepusher/go-sdk](https://pkg.go.dev/gitlab.com/wirepusher/go-sdk)
-- **Issues:** [GitLab Issues](https://gitlab.com/wirepusher/go-sdk/-/issues)
-- **Email:** support@wirepusher.com
-- **Website:** [wirepusher.com](https://wirepusher.com)
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
-
----
-
-Made with ❤️ by the WirePusher team
+MIT License - see [LICENSE](LICENSE) file for details.
