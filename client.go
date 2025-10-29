@@ -50,6 +50,8 @@ type Client struct {
 
 	// UserID is the WirePusher user ID (mutually exclusive with Token).
 	// Use this for personal notifications.
+	//
+	// Deprecated: Legacy authentication method. Use Token parameter instead.
 	UserID string
 
 	// APIURL is the WirePusher API endpoint (defaults to DefaultAPIURL).
@@ -88,7 +90,7 @@ func WithTimeout(timeout time.Duration) ClientOption {
 //
 // You must specify EITHER token OR userID, not both:
 //   - token: Team token (starts with "wpt_") for team-wide notifications
-//   - userID: User ID for personal notifications
+//   - userID: User ID for personal notifications (Deprecated: Legacy authentication method. Use Token parameter instead.)
 //
 // Panics if both token and userID are provided, or if neither is provided.
 //
@@ -196,7 +198,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	body := map[string]interface{}{
 		"title":   options.Title,
 		"message": finalMessage,
-		"id":      c.UserID,
+		"id":      c.UserID, // Deprecated: Legacy authentication. Use "token" instead.
 		"token":   c.Token,
 	}
 

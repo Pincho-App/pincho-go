@@ -2,6 +2,7 @@ package wirepusher
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -471,6 +472,156 @@ func TestClient_Send(t *testing.T) {
 		// Should not error even though response isn't JSON
 		if err != nil {
 			t.Errorf("expected no error, got: %v", err)
+		}
+	})
+}
+
+func TestEncryption(t *testing.T) {
+	t.Run("derive encryption key", func(t *testing.T) {
+		password := "test_password_123"
+		key, err := DeriveEncryptionKey(password)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(key) != 16 {
+			t.Errorf("expected key length 16, got %d", len(key))
+		}
+
+		// Verify key derivation is deterministic
+		key2, _ := DeriveEncryptionKey(password)
+		if string(key) != string(key2) {
+			t.Error("key derivation is not deterministic")
+		}
+	})
+
+	t.Run("encrypt message with fixed IV", func(t *testing.T) {
+		plaintext := "This is a secret message that needs to be encrypted securely."
+		password := "test_password_123"
+		ivHex := "0123456789abcdef0123456789abcdef"
+
+		iv, err := hex.DecodeString(ivHex)
+		if err != nil {
+			t.Fatalf("failed to decode IV: %v", err)
+		}
+
+		encrypted, err := EncryptMessage(plaintext, password, iv)
+		if err != nil {
+			t.Fatalf("encryption failed: %v", err)
+		}
+
+		// Verify it uses custom Base64 encoding (contains -, ., or _)
+		hasCustomChars := strings.Contains(encrypted, "-") || strings.Contains(encrypted, ".") || strings.Contains(encrypted, "_")
+		if !hasCustomChars {
+			t.Error("encrypted output should use custom Base64 encoding")
+		}
+
+		// Verify encryption is deterministic with same IV
+		encrypted2, _ := EncryptMessage(plaintext, password, iv)
+		if encrypted != encrypted2 {
+			t.Error("encryption with same IV should be deterministic")
+		}
+
+		// Expected value verified with reference implementation
+		// Key: 5a0aee0f3af308cd6d74d617fde6592c (from SHA1 of password)
+		// Plaintext length: 61 bytes, padded to 64 bytes (pad_length=3)
+		expected := "y2fzGqnZSgdMqkwYhAUEZi30VFBYvwcCmrQ6BmSliPpPGHXMdMRsLCtG-cfwhhxN4HSIk5Y3UMjM6XoBWPqiHw__"
+		if encrypted != expected {
+			t.Errorf("encrypted output doesn't match expected.\nGot:      %s\nExpected: %s", encrypted, expected)
+		}
+	})
+
+	t.Run("encrypt different messages produce different outputs", func(t *testing.T) {
+		password := "test_password"
+		iv, _, _ := GenerateIV()
+
+		encrypted1, _ := EncryptMessage("message 1", password, iv)
+		encrypted2, _ := EncryptMessage("message 2", password, iv)
+
+		if encrypted1 == encrypted2 {
+			t.Error("different messages should produce different encrypted outputs")
+		}
+	})
+
+	t.Run("generate IV", func(t *testing.T) {
+		iv1, ivHex1, err := GenerateIV()
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(iv1) != 16 {
+			t.Errorf("expected IV length 16, got %d", len(iv1))
+		}
+
+		if len(ivHex1) != 32 {
+			t.Errorf("expected IV hex length 32, got %d", len(ivHex1))
+		}
+
+		// Verify IVs are random (different each time)
+		_, ivHex2, _ := GenerateIV()
+		if ivHex1 == ivHex2 {
+			t.Error("generated IVs should be random")
+		}
+	})
+
+	t.Run("custom base64 encoding", func(t *testing.T) {
+		// Test that custom encoding replaces special characters correctly
+		iv, _, _ := GenerateIV()
+		plaintext := "Test message with padding"
+		password := "password"
+
+		encrypted, _ := EncryptMessage(plaintext, password, iv)
+
+		// Should not contain standard Base64 special characters
+		if strings.Contains(encrypted, "+") {
+			t.Error("encrypted output should not contain '+' (should be '-')")
+		}
+		if strings.Contains(encrypted, "/") {
+			t.Error("encrypted output should not contain '/' (should be '.')")
+		}
+		if strings.Contains(encrypted, "=") {
+			t.Error("encrypted output should not contain '=' (should be '_')")
+		}
+	})
+
+	t.Run("send with encryption", func(t *testing.T) {
+		var receivedBody map[string]interface{}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &receivedBody)
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("", "test-user", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:              "Test",
+			Message:            "Secret message",
+			EncryptionPassword: "test_password",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		// Verify encrypted message is different from plaintext
+		if receivedBody["message"] == "Secret message" {
+			t.Error("message should be encrypted, got plaintext")
+		}
+
+		// Verify IV was included
+		if receivedBody["iv"] == nil || receivedBody["iv"] == "" {
+			t.Error("IV should be included in request when encryption is used")
+		}
+
+		ivHex, ok := receivedBody["iv"].(string)
+		if !ok || len(ivHex) != 32 {
+			t.Errorf("IV should be 32-character hex string, got: %v", receivedBody["iv"])
 		}
 	})
 }
