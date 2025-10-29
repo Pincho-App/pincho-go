@@ -20,6 +20,10 @@ Official Go SDK for [WirePusher](https://wirepusher.dev) push notifications.
 go get gitlab.com/wirepusher/go-sdk
 ```
 
+**Authentication:**
+- **Token-based** (recommended): Pass your token and empty string for userID
+- **Legacy user ID** (deprecated): Pass empty string for token and your userID
+
 ## Quick Start
 
 ```go
@@ -34,6 +38,7 @@ import (
 )
 
 func main() {
+    // NewClient(token, userID) - use empty string for userID when using token-based auth
     token := os.Getenv("WIREPUSHER_TOKEN")
     client := wirepusher.NewClient(token, "")
 
