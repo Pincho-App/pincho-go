@@ -6,20 +6,18 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/wirepusher/go-sdk"
+	"gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
-	// Get credentials from environment variables
+	// Get token from environment variable
 	token := os.Getenv("WIREPUSHER_TOKEN")
-	userID := os.Getenv("WIREPUSHER_USER_ID")
-
-	if token == "" || userID == "" {
-		log.Fatal("WIREPUSHER_TOKEN and WIREPUSHER_USER_ID environment variables are required")
+	if token == "" {
+		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token, userID)
+	client := wirepusher.NewClient(token)
 
 	// Example 1: Handle validation error
 	fmt.Println("Example 1: Validation error (empty title)")
@@ -39,7 +37,7 @@ func main() {
 
 	// Example 3: Handle auth error (invalid token)
 	fmt.Println("\nExample 3: Auth error (trying with invalid token)")
-	invalidClient := wirepusher.NewClient("invalid-token", userID)
+	invalidClient := wirepusher.NewClient("invalid-token")
 	err = invalidClient.SendSimple(context.Background(), "Test", "This will fail")
 	handleError(err)
 
@@ -67,7 +65,7 @@ func handleError(err error) {
 
 	case *wirepusher.AuthError:
 		fmt.Printf("✗ Authentication Error: %s (status: %d)\n", e.Message, e.StatusCode)
-		fmt.Println("  → Check your token and user ID")
+		fmt.Println("  → Check your token")
 
 	case *wirepusher.RateLimitError:
 		fmt.Printf("✗ Rate Limit Error: %s (status: %d)\n", e.Message, e.StatusCode)

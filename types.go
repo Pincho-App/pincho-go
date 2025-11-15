@@ -60,3 +60,27 @@ type DeleteResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
 }
+
+// NotifAIOptions contains parameters for generating AI-powered notifications.
+//
+// The NotifAI endpoint uses AI to convert free-form text into a structured notification.
+type NotifAIOptions struct {
+	Text string `json:"text"`           // Free-form text to convert to notification (required)
+	Type string `json:"type,omitempty"` // Optional type override
+}
+
+// NotifAINotification represents the AI-generated notification data.
+type NotifAINotification struct {
+	Title     string   `json:"title"`
+	Message   string   `json:"message"`
+	Type      string   `json:"type,omitempty"`
+	Tags      []string `json:"tags,omitempty"`
+	ActionURL string   `json:"action_url,omitempty"`
+}
+
+// NotifAIResponse is the response from the NotifAI endpoint.
+type NotifAIResponse struct {
+	Status       string              `json:"status"`
+	Message      string              `json:"message"`
+	Notification NotifAINotification `json:"notification"`
+}

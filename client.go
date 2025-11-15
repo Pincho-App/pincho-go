@@ -2,11 +2,8 @@
 //
 // Example usage:
 //
-//	// Personal notifications
-//	client := wirepusher.NewClient("", "your-user-id")
-//
-//	// Team notifications
-//	client := wirepusher.NewClient("wpt_your_token", "")
+//	// Create client with token
+//	client := wirepusher.NewClient("abc12345")
 //
 //	// Simple send
 //	err := client.SendSimple(ctx, "Hello", "World")
@@ -44,15 +41,8 @@ const (
 
 // Client is the WirePusher API client.
 type Client struct {
-	// Token is the WirePusher team token (mutually exclusive with UserID).
-	// Use this for team notifications (starts with "wpt_").
+	// Token is the WirePusher API token.
 	Token string
-
-	// UserID is the WirePusher user ID (mutually exclusive with Token).
-	// Use this for personal notifications.
-	//
-	// Deprecated: Legacy authentication method. Use Token parameter instead.
-	UserID string
 
 	// APIURL is the WirePusher API endpoint (defaults to DefaultAPIURL).
 	APIURL string
@@ -60,6 +50,10 @@ type Client struct {
 	// HTTPClient is the HTTP client used for requests.
 	// Can be customized to use different timeouts, proxies, etc.
 	HTTPClient *http.Client
+
+	// MaxRetries is the maximum number of retry attempts for failed requests.
+	// Defaults to 3. Set to 0 to disable retries.
+	MaxRetries int
 }
 
 // ClientOption is a functional option for configuring the Client.
@@ -86,44 +80,46 @@ func WithTimeout(timeout time.Duration) ClientOption {
 	}
 }
 
+// WithMaxRetries sets the maximum number of retry attempts.
+// Set to 0 to disable retries.
+func WithMaxRetries(maxRetries int) ClientOption {
+	return func(c *Client) {
+		c.MaxRetries = maxRetries
+	}
+}
+
 // NewClient creates a new WirePusher client.
 //
-// You must specify EITHER token OR userID, not both:
-//   - token: Team token (starts with "wpt_") for team-wide notifications
-//   - userID: User ID for personal notifications (Deprecated: Legacy authentication method. Use Token parameter instead.)
-//
-// Panics if both token and userID are provided, or if neither is provided.
+// The token parameter is your WirePusher API token (required).
 //
 // Examples:
 //
-//	// Personal notifications
-//	client := wirepusher.NewClient("", "user_abc123")
-//
-//	// Team notifications
-//	client := wirepusher.NewClient("wpt_abc123...", "")
+//	// Basic client
+//	client := wirepusher.NewClient("abc12345")
 //
 //	// With custom timeout
 //	client := wirepusher.NewClient(
-//	    "",
-//	    "user_abc123",
+//	    "abc12345",
 //	    wirepusher.WithTimeout(10*time.Second),
 //	)
-func NewClient(token, userID string, opts ...ClientOption) *Client {
-	// Validate mutual exclusivity
-	if token != "" && userID != "" {
-		panic("wirepusher: cannot specify both token and userID - they are mutually exclusive. Use token for team notifications or userID for personal notifications")
-	}
-	if token == "" && userID == "" {
-		panic("wirepusher: must specify either token or userID. Use token for team notifications or userID for personal notifications")
+//
+//	// With custom HTTP client
+//	client := wirepusher.NewClient(
+//	    "abc12345",
+//	    wirepusher.WithHTTPClient(customHTTPClient),
+//	)
+func NewClient(token string, opts ...ClientOption) *Client {
+	if token == "" {
+		panic("wirepusher: token is required")
 	}
 
 	client := &Client{
 		Token:  token,
-		UserID: userID,
 		APIURL: DefaultAPIURL,
 		HTTPClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
+		MaxRetries: 3, // Default: 3 retries with exponential backoff
 	}
 
 	for _, opt := range opts {
@@ -131,6 +127,53 @@ func NewClient(token, userID string, opts ...ClientOption) *Client {
 	}
 
 	return client
+}
+
+// retryWithBackoff executes a function with exponential backoff retry logic.
+// It retries on retryable errors (network errors, 5xx, 429) up to maxRetries times.
+// For rate limit errors (429), it uses longer backoff periods.
+func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
+		// Execute the operation
+		err := operation()
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+
+		// Check if error is retryable
+		if !IsErrorRetryable(err) {
+			return err
+		}
+
+		// Don't retry if we've exhausted all attempts
+		if attempt == c.MaxRetries {
+			return err
+		}
+
+		// Calculate backoff duration
+		var backoff time.Duration
+		if _, isRateLimit := err.(*RateLimitError); isRateLimit {
+			// Rate limit: use longer backoff (5s, 10s, 20s)
+			backoff = time.Duration(5*(1<<uint(attempt))) * time.Second
+		} else {
+			// Network/server error: exponential backoff (1s, 2s, 4s, 8s)
+			backoff = time.Duration(1<<uint(attempt)) * time.Second
+		}
+
+		// Wait with context cancellation support
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+			// Continue to next retry
+		}
+	}
+
+	return lastErr
 }
 
 // SendSimple sends a simple notification with just a title and message.
@@ -198,7 +241,6 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	body := map[string]interface{}{
 		"title":   options.Title,
 		"message": finalMessage,
-		"id":      c.UserID, // Deprecated: Legacy authentication. Use "token" instead.
 		"token":   c.Token,
 	}
 
@@ -223,54 +265,165 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		return &Error{Message: fmt.Sprintf("failed to marshal request: %v", err), StatusCode: 0}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.APIURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return &Error{Message: fmt.Sprintf("failed to create request: %v", err), StatusCode: 0}
-	}
+	// Wrap HTTP request in retry logic
+	return c.retryWithBackoff(ctx, func() error {
+		req, err := http.NewRequestWithContext(ctx, "POST", c.APIURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to create request: %v", err), StatusCode: 0}
+		}
 
-	req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return &Error{Message: fmt.Sprintf("request failed: %v", err), StatusCode: 0}
-	}
-	defer resp.Body.Close()
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("request failed: %v", err), StatusCode: 0}
+		}
+		defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return &Error{Message: fmt.Sprintf("failed to read response: %v", err), StatusCode: resp.StatusCode}
-	}
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to read response: %v", err), StatusCode: resp.StatusCode}
+		}
 
-	// Handle non-2xx status codes
-	if resp.StatusCode >= 400 {
-		var errorMsg string
+		// Handle non-2xx status codes
+		if resp.StatusCode >= 400 {
+			var errorMsg string
 
-		// Try to parse error response
+			// Try to parse error response
+			var apiResponse SendResponse
+			if err := json.Unmarshal(bodyBytes, &apiResponse); err == nil && apiResponse.Message != "" {
+				errorMsg = apiResponse.Message
+			} else {
+				errorMsg = string(bodyBytes)
+			}
+
+			switch resp.StatusCode {
+			case 400:
+				return &ValidationError{Message: errorMsg, StatusCode: resp.StatusCode}
+			case 401, 403:
+				return &AuthError{Message: errorMsg, StatusCode: resp.StatusCode}
+			case 429:
+				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
+			default:
+				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
+			}
+		}
+
+		// Parse success response (optional)
 		var apiResponse SendResponse
-		if err := json.Unmarshal(bodyBytes, &apiResponse); err == nil && apiResponse.Message != "" {
-			errorMsg = apiResponse.Message
-		} else {
-			errorMsg = string(bodyBytes)
+		if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
+			// Non-fatal: response was successful but couldn't parse
+			return nil
 		}
 
-		switch resp.StatusCode {
-		case 400:
-			return &ValidationError{Message: errorMsg, StatusCode: resp.StatusCode}
-		case 401, 403:
-			return &AuthError{Message: errorMsg, StatusCode: resp.StatusCode}
-		case 429:
-			return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
-		default:
-			return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
-		}
-	}
-
-	// Parse success response (optional)
-	var apiResponse SendResponse
-	if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
-		// Non-fatal: response was successful but couldn't parse
 		return nil
+	})
+}
+
+// NotifAI generates and sends an AI-powered notification from free-form text.
+//
+// The NotifAI endpoint uses AI (Gemini) to convert natural language into a
+// structured notification with title, message, type, and tags.
+//
+// Example:
+//
+//	response, err := client.NotifAI(ctx, &wirepusher.NotifAIOptions{
+//	    Text: "deployment finished successfully, v2.1.3 is live on prod",
+//	    Type: "deployment", // Optional override
+//	})
+func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAIResponse, error) {
+	if options == nil {
+		return nil, &ValidationError{Message: "options cannot be nil", StatusCode: 0}
 	}
 
-	return nil
+	if options.Text == "" {
+		return nil, &ValidationError{Message: "text is required", StatusCode: 0}
+	}
+
+	// Build request body
+	body := map[string]interface{}{
+		"text":  options.Text,
+		"token": c.Token,
+	}
+
+	if options.Type != "" {
+		body["type"] = options.Type
+	}
+
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return nil, &Error{Message: fmt.Sprintf("failed to marshal request: %v", err), StatusCode: 0}
+	}
+
+	// Build NotifAI endpoint URL
+	// If URL ends with "/send", replace with "/notifai", otherwise just use base URL
+	apiURL := c.APIURL
+	if len(apiURL) >= 5 && apiURL[len(apiURL)-5:] == "/send" {
+		apiURL = apiURL[:len(apiURL)-5]
+	}
+	if apiURL[len(apiURL)-1] != '/' {
+		apiURL += "/"
+	}
+	apiURL += "notifai"
+
+	// Capture response outside retry closure
+	var apiResponse NotifAIResponse
+
+	// Wrap HTTP request in retry logic
+	err = c.retryWithBackoff(ctx, func() error {
+		req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to create request: %v", err), StatusCode: 0}
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("request failed: %v", err), StatusCode: 0}
+		}
+		defer resp.Body.Close()
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return &Error{Message: fmt.Sprintf("failed to read response: %v", err), StatusCode: resp.StatusCode}
+		}
+
+		// Handle non-2xx status codes
+		if resp.StatusCode >= 400 {
+			var errorMsg string
+
+			// Try to parse error response
+			var errResponse NotifAIResponse
+			if err := json.Unmarshal(bodyBytes, &errResponse); err == nil && errResponse.Message != "" {
+				errorMsg = errResponse.Message
+			} else {
+				errorMsg = string(bodyBytes)
+			}
+
+			switch resp.StatusCode {
+			case 400:
+				return &ValidationError{Message: errorMsg, StatusCode: resp.StatusCode}
+			case 401, 403:
+				return &AuthError{Message: errorMsg, StatusCode: resp.StatusCode}
+			case 429:
+				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
+			default:
+				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
+			}
+		}
+
+		// Parse success response
+		if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
+			return &Error{Message: fmt.Sprintf("failed to parse response: %v", err), StatusCode: resp.StatusCode}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &apiResponse, nil
 }

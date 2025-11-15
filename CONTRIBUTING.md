@@ -1,6 +1,6 @@
-# Contributing to WirePusher Go SDK
+# Contributing to WirePusher Go Client Library
 
-Thank you for your interest in contributing to the WirePusher Go SDK! We welcome contributions from the community.
+Thank you for your interest in contributing to the WirePusher Go Client Library! We welcome contributions from the community.
 
 ## Table of Contents
 
@@ -201,7 +201,7 @@ Fixes #456
 git push origin feature/your-feature-name
 
 # Create MR on GitLab
-# Go to: https://gitlab.com/wirepusher/go-sdk/-/merge_requests/new
+# Go to: https://gitlab.com/wirepusher/wirepusher-go/-/merge_requests/new
 ```
 
 ## Pull Request Process
@@ -461,4 +461,4 @@ If you have questions about contributing:
 - Email support@wirepusher.com
 - Check existing issues and MRs
 
-Thank you for contributing to WirePusher Go SDK!
+Thank you for contributing to WirePusher Go Client Library!
