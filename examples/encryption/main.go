@@ -40,10 +40,10 @@ func main() {
 	// Example 1: Basic encrypted notification (personal)
 	fmt.Println("Example 1: Sending encrypted notification to personal device...")
 	err := client.Send(ctx, &wirepusher.SendOptions{
-		Title:              "Secure Alert",                          // NOT encrypted (for display)
-		Message:            "Your credit card was charged $49.99",   // Encrypted
-		Type:               "secure",                                // NOT encrypted (needed for password lookup)
-		EncryptionPassword: encryptionPassword,                      // Must match app configuration
+		Title:              "Secure Alert",                        // NOT encrypted (for display)
+		Message:            "Your credit card was charged $49.99", // Encrypted
+		Type:               "secure",                              // NOT encrypted (needed for password lookup)
+		EncryptionPassword: encryptionPassword,                    // Must match app configuration
 	})
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
@@ -72,8 +72,8 @@ func main() {
 		Type:               "billing",
 		Tags:               []string{"payment", "subscription"},
 		EncryptionPassword: encryptionPassword,
-		ImageURL:           "https://example.com/payment-icon.png",  // NOT encrypted
-		ActionURL:          "https://example.com/billing/history",   // NOT encrypted
+		ImageURL:           "https://example.com/payment-icon.png", // NOT encrypted
+		ActionURL:          "https://example.com/billing/history",  // NOT encrypted
 	})
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)

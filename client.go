@@ -54,6 +54,10 @@ type Client struct {
 	// MaxRetries is the maximum number of retry attempts for failed requests.
 	// Defaults to 3. Set to 0 to disable retries.
 	MaxRetries int
+
+	// Logger is the logger for debug/info messages.
+	// Defaults to NoOpLogger (no logging). Use WithLogger() to enable logging.
+	Logger Logger
 }
 
 // ClientOption is a functional option for configuring the Client.
@@ -119,7 +123,8 @@ func NewClient(token string, opts ...ClientOption) *Client {
 		HTTPClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		MaxRetries: 3, // Default: 3 retries with exponential backoff
+		MaxRetries: 3,             // Default: 3 retries with exponential backoff
+		Logger:     &NoOpLogger{}, // Default: no logging
 	}
 
 	for _, opt := range opts {
@@ -136,6 +141,11 @@ func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) e
 	var lastErr error
 
 	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
+		// Log attempt
+		if attempt > 0 {
+			c.logDebug(fmt.Sprintf("Retry attempt %d/%d", attempt, c.MaxRetries))
+		}
+
 		// Execute the operation
 		err := operation()
 		if err == nil {
@@ -146,11 +156,13 @@ func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) e
 
 		// Check if error is retryable
 		if !IsErrorRetryable(err) {
+			c.logDebug(fmt.Sprintf("Error not retryable: %v", err))
 			return err
 		}
 
 		// Don't retry if we've exhausted all attempts
 		if attempt == c.MaxRetries {
+			c.logWarning(fmt.Sprintf("Max retries (%d) exceeded: %v", c.MaxRetries, err))
 			return err
 		}
 
@@ -159,14 +171,17 @@ func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) e
 		if _, isRateLimit := err.(*RateLimitError); isRateLimit {
 			// Rate limit: use longer backoff (5s, 10s, 20s)
 			backoff = time.Duration(5*(1<<uint(attempt))) * time.Second
+			c.logWarning(fmt.Sprintf("Rate limit hit, backing off for %s", backoff))
 		} else {
 			// Network/server error: exponential backoff (1s, 2s, 4s, 8s)
 			backoff = time.Duration(1<<uint(attempt)) * time.Second
+			c.logDebug(fmt.Sprintf("Retryable error, backing off for %s: %v", backoff, err))
 		}
 
 		// Wait with context cancellation support
 		select {
 		case <-ctx.Done():
+			c.logDebug("Context cancelled during retry backoff")
 			return ctx.Err()
 		case <-time.After(backoff):
 			// Continue to next retry
@@ -210,6 +225,8 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		return &ValidationError{Message: "options cannot be nil", StatusCode: 0}
 	}
 
+	c.logDebug(fmt.Sprintf("Send() called with title: %s", options.Title))
+
 	if options.Title == "" {
 		return &ValidationError{Message: "title is required", StatusCode: 0}
 	}
@@ -218,18 +235,27 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		return &ValidationError{Message: "message is required", StatusCode: 0}
 	}
 
+	// Normalize tags
+	normalizedTags := NormalizeTags(options.Tags)
+	if normalizedTags != nil && len(normalizedTags) != len(options.Tags) {
+		c.logDebug(fmt.Sprintf("Tags normalized: %v -> %v", options.Tags, normalizedTags))
+	}
+
 	// Handle encryption if password provided
 	finalMessage := options.Message
 	var ivHex string
 
 	if options.EncryptionPassword != "" {
+		c.logDebug("Encrypting message")
 		iv, ivStr, err := GenerateIV()
 		if err != nil {
+			c.logError(fmt.Sprintf("Failed to generate IV: %v", err))
 			return &Error{Message: fmt.Sprintf("failed to generate IV: %v", err), StatusCode: 0}
 		}
 
 		encryptedMessage, err := EncryptMessage(options.Message, options.EncryptionPassword, iv)
 		if err != nil {
+			c.logError(fmt.Sprintf("Failed to encrypt message: %v", err))
 			return &Error{Message: fmt.Sprintf("failed to encrypt message: %v", err), StatusCode: 0}
 		}
 
@@ -247,8 +273,8 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	if options.Type != "" {
 		body["type"] = options.Type
 	}
-	if len(options.Tags) > 0 {
-		body["tags"] = options.Tags
+	if normalizedTags != nil {
+		body["tags"] = normalizedTags
 	}
 	if options.ImageURL != "" {
 		body["imageURL"] = options.ImageURL
@@ -335,6 +361,8 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 	if options == nil {
 		return nil, &ValidationError{Message: "options cannot be nil", StatusCode: 0}
 	}
+
+	c.logDebug(fmt.Sprintf("NotifAI() called with text: %s", options.Text))
 
 	if options.Text == "" {
 		return nil, &ValidationError{Message: "text is required", StatusCode: 0}
