@@ -17,10 +17,48 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("wirepusher: %s", e.Message)
 }
 
-// IsRetryable returns true if this error should be retried.
-// Retries on network errors (status 0) and server errors (5xx).
+// IsRetryable returns false for generic errors.
+// Use ServerError or NetworkError for retryable errors.
 func (e *Error) IsRetryable() bool {
-	return e.StatusCode == 0 || e.StatusCode >= 500
+	return false
+}
+
+// ServerError represents a server error (5xx).
+type ServerError struct {
+	Message    string
+	StatusCode int
+}
+
+func (e *ServerError) Error() string {
+	return fmt.Sprintf("wirepusher server error: %s (status: %d)", e.Message, e.StatusCode)
+}
+
+// IsRetryable returns true - server errors should be retried.
+func (e *ServerError) IsRetryable() bool {
+	return true
+}
+
+// NetworkError represents a network or connection error.
+type NetworkError struct {
+	Message string
+	Err     error // Original error
+}
+
+func (e *NetworkError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("wirepusher network error: %s: %v", e.Message, e.Err)
+	}
+	return fmt.Sprintf("wirepusher network error: %s", e.Message)
+}
+
+// IsRetryable returns true - network errors should be retried.
+func (e *NetworkError) IsRetryable() bool {
+	return true
+}
+
+// Unwrap returns the original error for error chain support.
+func (e *NetworkError) Unwrap() error {
+	return e.Err
 }
 
 // AuthError represents an authentication error (401/403).

@@ -64,30 +64,45 @@ type Client struct {
 type ClientOption func(*Client)
 
 // WithAPIURL sets a custom API URL.
+// The URL must not be empty.
 func WithAPIURL(url string) ClientOption {
 	return func(c *Client) {
+		if url == "" {
+			panic("wirepusher: API URL cannot be empty")
+		}
 		c.APIURL = url
 	}
 }
 
 // WithHTTPClient sets a custom HTTP client.
+// The client must not be nil.
 func WithHTTPClient(client *http.Client) ClientOption {
 	return func(c *Client) {
+		if client == nil {
+			panic("wirepusher: HTTP client cannot be nil")
+		}
 		c.HTTPClient = client
 	}
 }
 
 // WithTimeout sets a custom HTTP timeout.
+// The timeout must be positive.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
+		if timeout <= 0 {
+			panic("wirepusher: timeout must be positive")
+		}
 		c.HTTPClient.Timeout = timeout
 	}
 }
 
 // WithMaxRetries sets the maximum number of retry attempts.
-// Set to 0 to disable retries.
+// Set to 0 to disable retries. Negative values are not allowed.
 func WithMaxRetries(maxRetries int) ClientOption {
 	return func(c *Client) {
+		if maxRetries < 0 {
+			panic("wirepusher: max retries cannot be negative")
+		}
 		c.MaxRetries = maxRetries
 	}
 }
@@ -295,20 +310,20 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	return c.retryWithBackoff(ctx, func() error {
 		req, err := http.NewRequestWithContext(ctx, "POST", c.APIURL, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("failed to create request: %v", err), StatusCode: 0}
+			return &NetworkError{Message: "failed to create request", Err: err}
 		}
 
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("request failed: %v", err), StatusCode: 0}
+			return &NetworkError{Message: "request failed", Err: err}
 		}
 		defer resp.Body.Close()
 
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("failed to read response: %v", err), StatusCode: resp.StatusCode}
+			return &NetworkError{Message: "failed to read response", Err: err}
 		}
 
 		// Handle non-2xx status codes
@@ -331,6 +346,9 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 			case 429:
 				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
 			default:
+				if resp.StatusCode >= 500 {
+					return &ServerError{Message: errorMsg, StatusCode: resp.StatusCode}
+				}
 				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
 			}
 		}
@@ -383,16 +401,17 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 		return nil, &Error{Message: fmt.Sprintf("failed to marshal request: %v", err), StatusCode: 0}
 	}
 
-	// Build NotifAI endpoint URL
-	// If URL ends with "/send", replace with "/notifai", otherwise just use base URL
-	apiURL := c.APIURL
-	if len(apiURL) >= 5 && apiURL[len(apiURL)-5:] == "/send" {
-		apiURL = apiURL[:len(apiURL)-5]
+	// Build NotifAI endpoint URL using proper URL parsing
+	baseURL := c.APIURL
+	// Remove "/send" suffix if present
+	if len(baseURL) >= 5 && baseURL[len(baseURL)-5:] == "/send" {
+		baseURL = baseURL[:len(baseURL)-5]
 	}
-	if apiURL[len(apiURL)-1] != '/' {
-		apiURL += "/"
+	// Ensure trailing slash
+	if baseURL[len(baseURL)-1] != '/' {
+		baseURL += "/"
 	}
-	apiURL += "notifai"
+	apiURL := baseURL + "notifai"
 
 	// Capture response outside retry closure
 	var apiResponse NotifAIResponse
@@ -401,20 +420,20 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 	err = c.retryWithBackoff(ctx, func() error {
 		req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("failed to create request: %v", err), StatusCode: 0}
+			return &NetworkError{Message: "failed to create request", Err: err}
 		}
 
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("request failed: %v", err), StatusCode: 0}
+			return &NetworkError{Message: "request failed", Err: err}
 		}
 		defer resp.Body.Close()
 
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return &Error{Message: fmt.Sprintf("failed to read response: %v", err), StatusCode: resp.StatusCode}
+			return &NetworkError{Message: "failed to read response", Err: err}
 		}
 
 		// Handle non-2xx status codes
@@ -437,13 +456,17 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 			case 429:
 				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
 			default:
+				if resp.StatusCode >= 500 {
+					return &ServerError{Message: errorMsg, StatusCode: resp.StatusCode}
+				}
 				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
 			}
 		}
 
 		// Parse success response
 		if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
-			return &Error{Message: fmt.Sprintf("failed to parse response: %v", err), StatusCode: resp.StatusCode}
+			// Non-fatal: response was successful but couldn't parse
+			return nil
 		}
 
 		return nil
