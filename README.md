@@ -13,6 +13,9 @@ Official Go Client Library for [WirePusher](https://wirepusher.dev) push notific
 - ✅ **Type-Safe** - Full Go type safety with comprehensive error types
 - ✅ **Functional Options** - Flexible client configuration
 - ✅ **Production-Ready** - >95% test coverage with race detector
+- ✅ **Automatic Retries** - Exponential backoff with configurable retry logic
+- ✅ **Debug Logging** - Optional logging interface for debugging and monitoring
+- ✅ **Tag Validation** - Automatic tag normalization and validation
 
 ## Installation
 
@@ -128,7 +131,7 @@ func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
 
     // Custom timeout
-    client := wirepusher.NewClient(token, "",
+    client := wirepusher.NewClient(token,
         wirepusher.WithTimeout(10*time.Second),
     )
 
@@ -139,13 +142,24 @@ func main() {
             TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
         },
     }
-    client = wirepusher.NewClient(token, "",
+    client = wirepusher.NewClient(token,
         wirepusher.WithHTTPClient(httpClient),
     )
 
     // Custom API URL (for testing)
-    client = wirepusher.NewClient(token, "",
+    client = wirepusher.NewClient(token,
         wirepusher.WithAPIURL("https://custom.example.com/api"),
+    )
+
+    // Enable debug logging
+    logger := wirepusher.NewStdLogger("wirepusher")
+    client = wirepusher.NewClient(token,
+        wirepusher.WithLogger(logger),
+    )
+
+    // Configure retry behavior
+    client = wirepusher.NewClient(token,
+        wirepusher.WithMaxRetries(5), // Default: 3
     )
 }
 ```
@@ -239,6 +253,175 @@ func main() {
 - Store passwords securely (environment variables, secret managers)
 - Password must match the type configuration in the app
 
+## Logging
+
+Enable logging to debug issues or monitor API interactions. By default, no logging is performed for zero overhead.
+
+### Basic Logging
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/wirepusher-go"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+
+    // Enable standard output logging
+    logger := wirepusher.NewStdLogger("wirepusher")
+    client := wirepusher.NewClient(token,
+        wirepusher.WithLogger(logger),
+    )
+
+    err := client.SendSimple(context.Background(),
+        "Test",
+        "This will log debug information",
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### Custom Logger
+
+Implement the `Logger` interface to integrate with your existing logging solution:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    "gitlab.com/wirepusher/wirepusher-go"
+)
+
+// CustomLogger integrates with your logging system
+type CustomLogger struct {
+    // Your logger instance here
+}
+
+func (l *CustomLogger) Printf(format string, v ...interface{}) {
+    // Your logging implementation
+    fmt.Printf(format, v...)
+}
+
+func (l *CustomLogger) Println(v ...interface{}) {
+    // Your logging implementation
+    fmt.Println(v...)
+}
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+
+    customLogger := &CustomLogger{}
+    client := wirepusher.NewClient(token,
+        wirepusher.WithLogger(customLogger),
+    )
+
+    client.SendSimple(context.Background(), "Test", "Message")
+}
+```
+
+### What Gets Logged
+
+When logging is enabled, the client logs:
+- **DEBUG**: Send/NotifAI calls, tag normalization, encryption operations, retry attempts
+- **INFO**: Successful operations
+- **WARNING**: Rate limits, max retries exceeded
+- **ERROR**: Encryption failures, request errors
+
+## Tag Normalization
+
+Tags are automatically normalized for consistency:
+- Converted to lowercase
+- Whitespace trimmed
+- Only alphanumeric characters, hyphens, and underscores allowed
+- Duplicates removed (case-insensitive)
+- Empty tags filtered out
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/wirepusher-go"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    client := wirepusher.NewClient(token)
+
+    err := client.Send(context.Background(), &wirepusher.SendOptions{
+        Title:   "Deploy Complete",
+        Message: "Version 1.2.3 deployed",
+        // These tags will be normalized:
+        // "Production" -> "production"
+        // "  Release  " -> "release"
+        // "production" (duplicate) -> removed
+        // "invalid tag" (has space) -> removed
+        Tags: []string{"Production", "  Release  ", "production", "invalid tag"},
+    })
+    // Final tags sent: ["production", "release"]
+
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+## Automatic Retries
+
+The client automatically retries failed requests with exponential backoff:
+- **Network errors**: Retried with 1s, 2s, 4s backoff
+- **Server errors (5xx)**: Retried with exponential backoff
+- **Rate limits (429)**: Retried with longer backoff (5s, 10s, 20s)
+- **Default**: 3 retry attempts (configurable)
+
+Non-retryable errors (400, 401, 403) fail immediately.
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "gitlab.com/wirepusher/wirepusher-go"
+)
+
+func main() {
+    token := os.Getenv("WIREPUSHER_TOKEN")
+
+    // Customize retry behavior
+    client := wirepusher.NewClient(token,
+        wirepusher.WithMaxRetries(5), // Default: 3
+    )
+
+    // Disable retries
+    client = wirepusher.NewClient(token,
+        wirepusher.WithMaxRetries(0),
+    )
+
+    err := client.SendSimple(context.Background(), "Test", "Message")
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
 ## API Reference
 
 ### Client
@@ -248,6 +431,8 @@ type Client struct {
     Token      string        // WirePusher token (required)
     APIURL     string        // API endpoint (defaults to production)
     HTTPClient *http.Client  // HTTP client (can be customized)
+    MaxRetries int          // Maximum retry attempts (default: 3)
+    Logger     Logger       // Logger for debug/info messages (default: NoOpLogger)
 }
 ```
 
@@ -335,6 +520,22 @@ func WithAPIURL(url string) ClientOption
 ```
 
 Sets a custom API URL.
+
+#### WithMaxRetries
+
+```go
+func WithMaxRetries(maxRetries int) ClientOption
+```
+
+Sets the maximum number of retry attempts. Set to 0 to disable retries.
+
+#### WithLogger
+
+```go
+func WithLogger(logger Logger) ClientOption
+```
+
+Sets a custom logger for debug/info messages.
 
 ### Error Types
 
