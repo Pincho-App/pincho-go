@@ -1,19 +1,15 @@
-# WirePusher Go SDK Examples
+# WirePusher Go Client Library Examples
 
-This directory contains runnable examples demonstrating various features of the WirePusher Go SDK.
+This directory contains runnable examples demonstrating various features of the WirePusher Go Client Library.
 
 ## Prerequisites
 
 Before running any examples, you need:
 
-1. A WirePusher account with API credentials
-2. Environment variables set (choose either token OR user ID):
+1. A WirePusher account with API token
+2. Environment variable set:
    ```bash
-   # Personal notifications
-   export WIREPUSHER_USER_ID="your-user-id"
-
-   # OR team notifications
-   export WIREPUSHER_TOKEN="wpt_your_token"
+   export WIREPUSHER_TOKEN="abc12345"  # Your 8-character token
 
    # For encryption examples, also set:
    export WIREPUSHER_ENCRYPTION_PASSWORD="your_password"
@@ -110,15 +106,18 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
-    // 1. Get credentials from environment (choose either token OR userID)
-    userID := os.Getenv("WIREPUSHER_USER_ID")
+    // 1. Get token from environment
+    token := os.Getenv("WIREPUSHER_TOKEN")
+    if token == "" {
+        token = "abc12345" // Fallback for testing
+    }
 
     // 2. Create client
-    client := wirepusher.NewClient("", userID)
+    client := wirepusher.NewClient(token)
 
     // 3. Send notification
     err := client.SendSimple(context.Background(), "Title", "Message")
@@ -150,14 +149,14 @@ To use the SDK in your own project:
 
 1. Install the SDK:
    ```bash
-   go get gitlab.com/wirepusher/go-sdk
+   go get gitlab.com/wirepusher/wirepusher-go
    ```
 
 2. Import and use:
    ```go
-   import "gitlab.com/wirepusher/go-sdk"
+   import "gitlab.com/wirepusher/wirepusher-go"
 
-   client := wirepusher.NewClient("", userID)  // Use "" for either token or userID
+   client := wirepusher.NewClient(token)
    err := client.SendSimple(ctx, "Title", "Message")
    ```
 
@@ -166,10 +165,10 @@ To use the SDK in your own project:
 - **Environment Variables**: Use a `.env` file or a tool like `direnv` to manage your credentials
 - **Error Handling**: Always check errors and use type assertions to handle different error types
 - **Context**: Always pass a context (use `context.Background()` if you don't need cancellation/timeout)
-- **Testing**: Use a test user ID when trying out examples to avoid spamming your production devices
+- **Fallback Token**: Examples use "abc12345" as fallback if WIREPUSHER_TOKEN is not set
 
 ## Additional Resources
 
-- [API Reference](https://pkg.go.dev/gitlab.com/wirepusher/go-sdk)
+- [API Reference](https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go)
 - [Main README](../README.md)
 - [Contributing Guidelines](../CONTRIBUTING.md)

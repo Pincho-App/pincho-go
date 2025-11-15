@@ -20,7 +20,7 @@ package main
 import (
     "context"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {

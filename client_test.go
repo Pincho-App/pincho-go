@@ -7,21 +7,18 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestNewClient(t *testing.T) {
-	t.Run("with user ID", func(t *testing.T) {
-		client := NewClient("", "test-user")
+	t.Run("with token", func(t *testing.T) {
+		client := NewClient("abc12345")
 
-		if client.Token != "" {
-			t.Errorf("expected empty token, got '%s'", client.Token)
-		}
-
-		if client.UserID != "test-user" {
-			t.Errorf("expected userID 'test-user', got '%s'", client.UserID)
+		if client.Token != "abc12345" {
+			t.Errorf("expected token 'abc12345', got '%s'", client.Token)
 		}
 
 		if client.APIURL != DefaultAPIURL {
@@ -37,43 +34,18 @@ func TestNewClient(t *testing.T) {
 		}
 	})
 
-	t.Run("with token", func(t *testing.T) {
-		client := NewClient("wpt_test123", "")
-
-		if client.Token != "wpt_test123" {
-			t.Errorf("expected token 'wpt_test123', got '%s'", client.Token)
-		}
-
-		if client.UserID != "" {
-			t.Errorf("expected empty userID, got '%s'", client.UserID)
-		}
-
-		if client.APIURL != DefaultAPIURL {
-			t.Errorf("expected APIURL '%s', got '%s'", DefaultAPIURL, client.APIURL)
-		}
-	})
-
-	t.Run("panics with both token and userID", func(t *testing.T) {
+	t.Run("panics with empty token", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected NewClient to panic when both token and userID provided")
+				t.Error("expected NewClient to panic when token is empty")
 			}
 		}()
-		NewClient("wpt_test123", "test-user")
-	})
-
-	t.Run("panics with neither token nor userID", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("expected NewClient to panic when neither token nor userID provided")
-			}
-		}()
-		NewClient("", "")
+		NewClient("")
 	})
 
 	t.Run("with custom API URL", func(t *testing.T) {
 		customURL := "https://custom.example.com/api"
-		client := NewClient("", "user", WithAPIURL(customURL))
+		client := NewClient("abc12345", WithAPIURL(customURL))
 
 		if client.APIURL != customURL {
 			t.Errorf("expected APIURL '%s', got '%s'", customURL, client.APIURL)
@@ -82,7 +54,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("with custom timeout", func(t *testing.T) {
 		customTimeout := 5 * time.Second
-		client := NewClient("", "user", WithTimeout(customTimeout))
+		client := NewClient("abc12345", WithTimeout(customTimeout))
 
 		if client.HTTPClient.Timeout != customTimeout {
 			t.Errorf("expected timeout %v, got %v", customTimeout, client.HTTPClient.Timeout)
@@ -91,7 +63,7 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("with custom HTTP client", func(t *testing.T) {
 		customClient := &http.Client{Timeout: 10 * time.Second}
-		client := NewClient("", "user", WithHTTPClient(customClient))
+		client := NewClient("abc12345", WithHTTPClient(customClient))
 
 		if client.HTTPClient != customClient {
 			t.Error("expected custom HTTP client to be used")
@@ -136,7 +108,7 @@ func TestClient_SendSimple(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewClient("", "test-user", WithAPIURL(server.URL))
+			client := NewClient("abc12345", WithAPIURL(server.URL))
 			err := client.SendSimple(context.Background(), tt.title, tt.message)
 
 			if tt.expectError && err == nil {
@@ -180,7 +152,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("", "test-user", WithAPIURL(server.URL))
+		client := NewClient("abc12345", WithAPIURL(server.URL))
 
 		options := &SendOptions{
 			Title:     "Test Title",
@@ -223,18 +195,13 @@ func TestClient_Send(t *testing.T) {
 			t.Errorf("expected actionURL, got '%v'", receivedBody["actionURL"])
 		}
 
-		if receivedBody["id"] != "test-user" {
-			t.Errorf("expected id 'test-user', got '%v'", receivedBody["id"])
-		}
-
-		// Token should be nil/empty since we're using user_id
-		if receivedBody["token"] != nil && receivedBody["token"] != "" {
-			t.Errorf("expected nil/empty token, got '%v'", receivedBody["token"])
+		if receivedBody["token"] != "abc12345" {
+			t.Errorf("expected token 'abc12345', got '%v'", receivedBody["token"])
 		}
 	})
 
 	t.Run("validation errors", func(t *testing.T) {
-		client := NewClient("", "test-user")
+		client := NewClient("abc12345")
 
 		tests := []struct {
 			name          string
@@ -345,7 +312,8 @@ func TestClient_Send(t *testing.T) {
 				}))
 				defer server.Close()
 
-				client := NewClient("", "test-user", WithAPIURL(server.URL))
+				// Disable retries for error testing
+				client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
 
 				err := client.Send(context.Background(), &SendOptions{
 					Title:   "Test",
@@ -391,7 +359,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("", "test-user", WithAPIURL(server.URL))
+		client := NewClient("abc12345", WithAPIURL(server.URL))
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
@@ -418,7 +386,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("", "test-user", WithAPIURL(server.URL))
+		client := NewClient("abc12345", WithAPIURL(server.URL))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		defer cancel()
@@ -439,7 +407,7 @@ func TestClient_Send(t *testing.T) {
 
 	t.Run("network error", func(t *testing.T) {
 		// Use invalid URL to trigger network error
-		client := NewClient("", "test-user", WithAPIURL("http://localhost:1"))
+		client := NewClient("abc12345", WithAPIURL("http://localhost:1"))
 
 		err := client.Send(context.Background(), &SendOptions{
 			Title:   "Test",
@@ -462,7 +430,7 @@ func TestClient_Send(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("", "test-user", WithAPIURL(server.URL))
+		client := NewClient("abc12345", WithAPIURL(server.URL))
 
 		err := client.Send(context.Background(), &SendOptions{
 			Title:   "Test",
@@ -597,7 +565,7 @@ func TestEncryption(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := NewClient("", "test-user", WithAPIURL(server.URL))
+		client := NewClient("abc12345", WithAPIURL(server.URL))
 
 		err := client.Send(context.Background(), &SendOptions{
 			Title:              "Test",
@@ -664,6 +632,219 @@ func TestErrorTypes(t *testing.T) {
 		expected := "wirepusher rate limit error: rate limit exceeded (status: 429)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
+		}
+	})
+}
+
+func TestClient_NotifAI(t *testing.T) {
+	t.Run("successful notifai", func(t *testing.T) {
+		var receivedBody map[string]interface{}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify method
+			if r.Method != "POST" {
+				t.Errorf("expected POST request, got %s", r.Method)
+			}
+
+			// Verify Content-Type
+			if r.Header.Get("Content-Type") != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
+			}
+
+			// Parse body
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &receivedBody)
+
+			w.WriteHeader(200)
+			w.Write([]byte(`{
+				"status": "success",
+				"message": "Notification generated and sent",
+				"notification": {
+					"title": "Deploy Complete",
+					"message": "Version 2.1.3 is live on prod",
+					"type": "deployment",
+					"tags": ["production", "release"]
+				}
+			}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		response, err := client.NotifAI(context.Background(), &NotifAIOptions{
+			Text: "deployment finished successfully, v2.1.3 is live on prod",
+			Type: "deployment",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		// Verify request body
+		if receivedBody["text"] != "deployment finished successfully, v2.1.3 is live on prod" {
+			t.Errorf("expected text, got '%v'", receivedBody["text"])
+		}
+
+		if receivedBody["type"] != "deployment" {
+			t.Errorf("expected type 'deployment', got '%v'", receivedBody["type"])
+		}
+
+		if receivedBody["token"] != "abc12345" {
+			t.Errorf("expected token 'abc12345', got '%v'", receivedBody["token"])
+		}
+
+		// Verify response
+		if response.Status != "success" {
+			t.Errorf("expected status 'success', got '%s'", response.Status)
+		}
+
+		if response.Notification.Title != "Deploy Complete" {
+			t.Errorf("expected title 'Deploy Complete', got '%s'", response.Notification.Title)
+		}
+
+		if response.Notification.Type != "deployment" {
+			t.Errorf("expected type 'deployment', got '%s'", response.Notification.Type)
+		}
+
+		if len(response.Notification.Tags) != 2 {
+			t.Errorf("expected 2 tags, got %d", len(response.Notification.Tags))
+		}
+	})
+
+	t.Run("successful notifai without type", func(t *testing.T) {
+		var receivedBody map[string]interface{}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &receivedBody)
+
+			w.WriteHeader(200)
+			w.Write([]byte(`{
+				"status": "success",
+				"message": "Notification generated and sent",
+				"notification": {
+					"title": "CPU Alert",
+					"message": "CPU usage at 95% on web-3",
+					"type": "alert",
+					"tags": ["monitoring", "critical"]
+				}
+			}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		response, err := client.NotifAI(context.Background(), &NotifAIOptions{
+			Text: "cpu at 95% on web-3",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		// Verify type was not sent
+		if _, exists := receivedBody["type"]; exists {
+			t.Error("expected type field to be omitted when not provided")
+		}
+
+		if response.Notification.Type != "alert" {
+			t.Errorf("expected AI-generated type 'alert', got '%s'", response.Notification.Type)
+		}
+	})
+
+	t.Run("validation errors", func(t *testing.T) {
+		client := NewClient("abc12345")
+
+		tests := []struct {
+			name          string
+			options       *NotifAIOptions
+			errorContains string
+		}{
+			{
+				name:          "nil options",
+				options:       nil,
+				errorContains: "options cannot be nil",
+			},
+			{
+				name:          "empty text",
+				options:       &NotifAIOptions{Text: ""},
+				errorContains: "text is required",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := client.NotifAI(context.Background(), tt.options)
+
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+
+				if _, ok := err.(*ValidationError); !ok {
+					t.Errorf("expected ValidationError, got %T", err)
+				}
+
+				if err.Error() == "" || !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			})
+		}
+	})
+
+	t.Run("HTTP error responses", func(t *testing.T) {
+		tests := []struct {
+			name           string
+			statusCode     int
+			responseBody   string
+			expectedError  interface{}
+			errorSubstring string
+		}{
+			{
+				name:           "400 bad request",
+				statusCode:     400,
+				responseBody:   `{"status": "error", "message": "Invalid text"}`,
+				expectedError:  &ValidationError{},
+				errorSubstring: "Invalid text",
+			},
+			{
+				name:           "401 unauthorized",
+				statusCode:     401,
+				responseBody:   `{"status": "error", "message": "Invalid token"}`,
+				expectedError:  &AuthError{},
+				errorSubstring: "Invalid token",
+			},
+			{
+				name:           "429 rate limit",
+				statusCode:     429,
+				responseBody:   `{"status": "error", "message": "Rate limit exceeded"}`,
+				expectedError:  &RateLimitError{},
+				errorSubstring: "Rate limit exceeded",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(tt.statusCode)
+					w.Write([]byte(tt.responseBody))
+				}))
+				defer server.Close()
+
+				// Disable retries for error testing
+				client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
+
+				_, err := client.NotifAI(context.Background(), &NotifAIOptions{
+					Text: "test notification",
+				})
+
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+
+				if reflect.TypeOf(err) != reflect.TypeOf(tt.expectedError) {
+					t.Errorf("expected error type %T, got %T", tt.expectedError, err)
+				}
+			})
 		}
 	})
 }

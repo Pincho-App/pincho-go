@@ -41,7 +41,7 @@ import (
     "context"
     "log"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {

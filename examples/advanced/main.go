@@ -6,20 +6,18 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/wirepusher/go-sdk"
+	"gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
-	// Get credentials from environment variables
+	// Get token from environment variable
 	token := os.Getenv("WIREPUSHER_TOKEN")
-	userID := os.Getenv("WIREPUSHER_USER_ID")
-
-	if token == "" || userID == "" {
-		log.Fatal("WIREPUSHER_TOKEN and WIREPUSHER_USER_ID environment variables are required")
+	if token == "" {
+		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token, userID)
+	client := wirepusher.NewClient(token)
 
 	// Send notification with all options
 	err := client.Send(context.Background(), &wirepusher.SendOptions{

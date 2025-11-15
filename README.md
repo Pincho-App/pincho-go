@@ -1,10 +1,10 @@
-# WirePusher Go SDK
+# WirePusher Go Client Library
 
-[![Go Reference](https://pkg.go.dev/badge/gitlab.com/wirepusher/go-sdk.svg)](https://pkg.go.dev/gitlab.com/wirepusher/go-sdk)
-[![Go Report Card](https://goreportcard.com/badge/gitlab.com/wirepusher/go-sdk)](https://goreportcard.com/report/gitlab.com/wirepusher/go-sdk)
+[![Go Reference](https://pkg.go.dev/badge/gitlab.com/wirepusher/wirepusher-go.svg)](https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go)
+[![Go Report Card](https://goreportcard.com/badge/gitlab.com/wirepusher/wirepusher-go)](https://goreportcard.com/report/gitlab.com/wirepusher/wirepusher-go)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Official Go SDK for [WirePusher](https://wirepusher.dev) push notifications.
+Official Go Client Library for [WirePusher](https://wirepusher.dev) push notifications.
 
 ## Features
 
@@ -17,12 +17,8 @@ Official Go SDK for [WirePusher](https://wirepusher.dev) push notifications.
 ## Installation
 
 ```bash
-go get gitlab.com/wirepusher/go-sdk
+go get gitlab.com/wirepusher/wirepusher-go
 ```
-
-**Authentication:**
-- **Token-based** (recommended): Pass your token and empty string for userID
-- **Legacy user ID** (deprecated): Pass empty string for token and your userID
 
 ## Quick Start
 
@@ -34,13 +30,12 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
-    // NewClient(token, userID) - use empty string for userID when using token-based auth
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.SendSimple(context.Background(),
         "Deploy Complete",
@@ -66,12 +61,12 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.SendSimple(context.Background(),
         "Deploy Complete",
@@ -93,12 +88,12 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
         Title:     "Deploy Complete",
@@ -126,7 +121,7 @@ import (
     "os"
     "time"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
@@ -166,12 +161,12 @@ import (
     "os"
     "time"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     // With timeout
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -219,13 +214,13 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
     password := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
         Title:              "Security Alert",
@@ -251,7 +246,6 @@ func main() {
 ```go
 type Client struct {
     Token      string        // WirePusher token (required)
-    UserID     string        // Legacy user ID (not recommended)
     APIURL     string        // API endpoint (defaults to production)
     HTTPClient *http.Client  // HTTP client (can be customized)
 }
@@ -260,19 +254,18 @@ type Client struct {
 ### NewClient
 
 ```go
-func NewClient(token, userID string, opts ...ClientOption) *Client
+func NewClient(token string, opts ...ClientOption) *Client
 ```
 
-Creates a new WirePusher client. Use `token` for authentication (recommended). The `userID` parameter is legacy and not recommended for new integrations.
+Creates a new WirePusher client.
 
 **Parameters:**
-- `token` (string): Your WirePusher token (starts with `wpu_` or `wpt_`)
-- `userID` (string): Legacy user ID (pass empty string for token-based auth)
+- `token` (string): Your WirePusher token (8-character alphanumeric)
 - `opts` (...ClientOption): Optional configuration options
 
 **Returns:** `*Client`
 
-**Panics:** If both token and userID are empty
+**Panics:** If token is empty
 
 ### SendSimple
 
@@ -399,12 +392,12 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.SendSimple(context.Background(),
         "Deploy Complete",
@@ -449,12 +442,12 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func notifyDeployment(version, environment string) {
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
         Title:   "Deploy Complete",
@@ -483,13 +476,13 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func checkServerHealth(cpu, memory float64) {
     if cpu > 80 || memory > 80 {
         token := os.Getenv("WIREPUSHER_TOKEN")
-        client := wirepusher.NewClient(token, "")
+        client := wirepusher.NewClient(token)
 
         err := client.Send(context.Background(), &wirepusher.SendOptions{
             Title:   "Server Alert",
@@ -521,7 +514,7 @@ import (
     "net/http"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func deployHandler(w http.ResponseWriter, r *http.Request) {
@@ -533,7 +526,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
     // Your deployment logic here
 
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
         Title:   "Deploy Complete",
@@ -565,14 +558,14 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/go-sdk"
+    "gitlab.com/wirepusher/wirepusher-go"
 )
 
 func processBatch(records int) {
     // Your batch processing logic here
 
     token := os.Getenv("WIREPUSHER_TOKEN")
-    client := wirepusher.NewClient(token, "")
+    client := wirepusher.NewClient(token)
 
     err := client.Send(context.Background(), &wirepusher.SendOptions{
         Title:   "Batch Job Complete",
@@ -596,7 +589,7 @@ func main() {
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/wirepusher/go-sdk.git
+git clone https://gitlab.com/wirepusher/wirepusher-go.git
 cd go-sdk
 
 # Install dependencies
@@ -636,9 +629,9 @@ golangci-lint run  # If golangci-lint is installed
 
 ## Links
 
-- **Documentation**: https://pkg.go.dev/gitlab.com/wirepusher/go-sdk
-- **Repository**: https://gitlab.com/wirepusher/go-sdk
-- **Issues**: https://gitlab.com/wirepusher/go-sdk/-/issues
+- **Documentation**: https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go
+- **Repository**: https://gitlab.com/wirepusher/wirepusher-go
+- **Issues**: https://gitlab.com/wirepusher/wirepusher-go/-/issues
 - **Website**: https://wirepusher.dev
 
 ## License

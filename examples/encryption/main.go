@@ -15,18 +15,16 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/wirepusher/go-sdk"
+	"gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
 	// Get credentials from environment variables (recommended)
-	userID := os.Getenv("WIREPUSHER_USER_ID")
+	token := os.Getenv("WIREPUSHER_TOKEN")
 	encryptionPassword := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
 
-	if userID == "" {
-		log.Fatal("Error: WIREPUSHER_USER_ID environment variable not set\n" +
-			"Set it with: export WIREPUSHER_USER_ID='your_user_id'\n" +
-			"Alternatively, you can use a team token: export WIREPUSHER_TOKEN='wpt_your_token'")
+	if token == "" {
+		token = "abc12345" // Fallback for testing
 	}
 
 	if encryptionPassword == "" {
@@ -35,7 +33,7 @@ func main() {
 	}
 
 	// Create client
-	client := wirepusher.NewClient("", userID)
+	client := wirepusher.NewClient(token)
 
 	ctx := context.Background()
 

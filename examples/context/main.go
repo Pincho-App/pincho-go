@@ -7,20 +7,18 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/wirepusher/go-sdk"
+	"gitlab.com/wirepusher/wirepusher-go"
 )
 
 func main() {
-	// Get credentials from environment variables
+	// Get token from environment variable
 	token := os.Getenv("WIREPUSHER_TOKEN")
-	userID := os.Getenv("WIREPUSHER_USER_ID")
-
-	if token == "" || userID == "" {
-		log.Fatal("WIREPUSHER_TOKEN and WIREPUSHER_USER_ID environment variables are required")
+	if token == "" {
+		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token, userID)
+	client := wirepusher.NewClient(token)
 
 	// Example 1: With timeout
 	fmt.Println("Example 1: Sending with 5-second timeout...")
@@ -62,7 +60,6 @@ func main() {
 	fmt.Println("\nExample 3: Using client with custom timeout...")
 	customClient := wirepusher.NewClient(
 		token,
-		userID,
 		wirepusher.WithTimeout(10*time.Second),
 	)
 

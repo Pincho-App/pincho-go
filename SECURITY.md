@@ -53,7 +53,7 @@ After you submit a report:
 
 ### For Users
 
-When using the WirePusher Go SDK:
+When using the WirePusher Go Client Library:
 
 1. **Keep the SDK updated** to the latest version
 2. **Never commit credentials** to version control
@@ -67,12 +67,11 @@ When using the WirePusher Go SDK:
 
 ```go
 // ❌ Bad - Hardcoded credentials
-client := wirepusher.NewClient("wpt_abc123", "user123")
+client := wirepusher.NewClient("abc12345")
 
 // ✅ Good - Environment variables
 token := os.Getenv("WIREPUSHER_TOKEN")
-userID := os.Getenv("WIREPUSHER_USER_ID")
-client := wirepusher.NewClient(token, userID)
+client := wirepusher.NewClient(token)
 ```
 
 ### Error Handling
