@@ -123,16 +123,6 @@ func (c *Client) logError(message string) {
 	c.logf("ERROR: %s", message)
 }
 
-// logRetry logs retry attempt information.
-func (c *Client) logRetry(attempt, maxRetries int, backoff string) {
-	c.logf("DEBUG: Retry attempt %d/%d (backoff: %s)", attempt, maxRetries, backoff)
-}
-
-// logSuccess logs successful operation.
-func (c *Client) logSuccess(operation string) {
-	c.logf("INFO: %s completed successfully", operation)
-}
-
 // truncateToken returns a truncated token for safe logging.
 // Shows first 4 chars only: "abc12345" -> "abc1..."
 func truncateToken(token string) string {
