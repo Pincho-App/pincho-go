@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -67,6 +68,58 @@ func TestNewClient(t *testing.T) {
 
 		if client.HTTPClient != customClient {
 			t.Error("expected custom HTTP client to be used")
+		}
+	})
+
+	t.Run("panics with empty API URL", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected WithAPIURL to panic when URL is empty")
+			}
+		}()
+		NewClient("abc12345", WithAPIURL(""))
+	})
+
+	t.Run("panics with nil HTTP client", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected WithHTTPClient to panic when client is nil")
+			}
+		}()
+		NewClient("abc12345", WithHTTPClient(nil))
+	})
+
+	t.Run("panics with zero timeout", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected WithTimeout to panic when timeout is zero")
+			}
+		}()
+		NewClient("abc12345", WithTimeout(0))
+	})
+
+	t.Run("panics with negative timeout", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected WithTimeout to panic when timeout is negative")
+			}
+		}()
+		NewClient("abc12345", WithTimeout(-1*time.Second))
+	})
+
+	t.Run("panics with negative max retries", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected WithMaxRetries to panic when max retries is negative")
+			}
+		}()
+		NewClient("abc12345", WithMaxRetries(-1))
+	})
+
+	t.Run("allows zero max retries", func(t *testing.T) {
+		client := NewClient("abc12345", WithMaxRetries(0))
+		if client.MaxRetries != 0 {
+			t.Errorf("expected MaxRetries to be 0, got %d", client.MaxRetries)
 		}
 	})
 }
@@ -292,15 +345,22 @@ func TestClient_Send(t *testing.T) {
 				name:          "500 server error",
 				statusCode:    500,
 				responseBody:  `{"status": "error", "message": "Internal server error"}`,
-				errorType:     &Error{},
+				errorType:     &ServerError{},
 				errorContains: "Internal server error",
 			},
 			{
-				name:          "non-JSON error response",
-				statusCode:    500,
-				responseBody:  "Internal Server Error",
-				errorType:     &Error{},
-				errorContains: "Internal Server Error",
+				name:          "502 bad gateway",
+				statusCode:    502,
+				responseBody:  `{"status": "error", "message": "Bad Gateway"}`,
+				errorType:     &ServerError{},
+				errorContains: "Bad Gateway",
+			},
+			{
+				name:          "503 service unavailable",
+				statusCode:    503,
+				responseBody:  "Service Unavailable",
+				errorType:     &ServerError{},
+				errorContains: "Service Unavailable",
 			},
 		}
 
@@ -341,6 +401,10 @@ func TestClient_Send(t *testing.T) {
 				case *RateLimitError:
 					if _, ok := err.(*RateLimitError); !ok {
 						t.Errorf("expected RateLimitError, got %T", err)
+					}
+				case *ServerError:
+					if _, ok := err.(*ServerError); !ok {
+						t.Errorf("expected ServerError, got %T", err)
 					}
 				case *Error:
 					if _, ok := err.(*Error); !ok {
@@ -418,8 +482,14 @@ func TestClient_Send(t *testing.T) {
 			t.Fatal("expected network error, got nil")
 		}
 
-		if _, ok := err.(*Error); !ok {
-			t.Errorf("expected Error type, got %T", err)
+		if _, ok := err.(*NetworkError); !ok {
+			t.Errorf("expected NetworkError type, got %T", err)
+		}
+
+		// Verify error wrapping
+		netErr := err.(*NetworkError)
+		if netErr.Err == nil {
+			t.Error("expected NetworkError.Err to be set")
 		}
 	})
 
@@ -634,6 +704,88 @@ func TestErrorTypes(t *testing.T) {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
 	})
+
+	t.Run("ServerError", func(t *testing.T) {
+		err := &ServerError{Message: "internal server error", StatusCode: 500}
+		expected := "wirepusher server error: internal server error (status: 500)"
+		if err.Error() != expected {
+			t.Errorf("expected '%s', got '%s'", expected, err.Error())
+		}
+	})
+
+	t.Run("NetworkError", func(t *testing.T) {
+		originalErr := fmt.Errorf("connection refused")
+		err := &NetworkError{Message: "request failed", Err: originalErr}
+		expected := "wirepusher network error: request failed: connection refused"
+		if err.Error() != expected {
+			t.Errorf("expected '%s', got '%s'", expected, err.Error())
+		}
+	})
+
+	t.Run("NetworkError without wrapped error", func(t *testing.T) {
+		err := &NetworkError{Message: "request failed", Err: nil}
+		expected := "wirepusher network error: request failed"
+		if err.Error() != expected {
+			t.Errorf("expected '%s', got '%s'", expected, err.Error())
+		}
+	})
+
+	t.Run("NetworkError Unwrap", func(t *testing.T) {
+		originalErr := fmt.Errorf("connection refused")
+		err := &NetworkError{Message: "request failed", Err: originalErr}
+		unwrapped := err.Unwrap()
+		if unwrapped != originalErr {
+			t.Errorf("expected unwrapped error to be original error")
+		}
+	})
+}
+
+func TestIsErrorRetryable(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		retryable bool
+	}{
+		{
+			name:      "ServerError is retryable",
+			err:       &ServerError{Message: "internal error", StatusCode: 500},
+			retryable: true,
+		},
+		{
+			name:      "NetworkError is retryable",
+			err:       &NetworkError{Message: "connection failed", Err: fmt.Errorf("test")},
+			retryable: true,
+		},
+		{
+			name:      "RateLimitError is retryable",
+			err:       &RateLimitError{Message: "rate limit", StatusCode: 429},
+			retryable: true,
+		},
+		{
+			name:      "AuthError is not retryable",
+			err:       &AuthError{Message: "unauthorized", StatusCode: 401},
+			retryable: false,
+		},
+		{
+			name:      "ValidationError is not retryable",
+			err:       &ValidationError{Message: "invalid", StatusCode: 400},
+			retryable: false,
+		},
+		{
+			name:      "Error is not retryable",
+			err:       &Error{Message: "generic error", StatusCode: 0},
+			retryable: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsErrorRetryable(tt.err)
+			if result != tt.retryable {
+				t.Errorf("expected IsErrorRetryable() = %v, got %v", tt.retryable, result)
+			}
+		})
+	}
 }
 
 func TestClient_NotifAI(t *testing.T) {
