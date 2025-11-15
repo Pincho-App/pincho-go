@@ -28,6 +28,20 @@ type SendResponse struct {
 	Message string `json:"message"`
 }
 
+// ErrorResponse represents the API error response with nested structure.
+type ErrorResponse struct {
+	Status string       `json:"status"`
+	Error  ErrorDetails `json:"error"`
+}
+
+// ErrorDetails contains the nested error information.
+type ErrorDetails struct {
+	Type    string `json:"type"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Param   string `json:"param,omitempty"`
+}
+
 // NotificationFilter contains parameters for filtering notifications.
 //
 // All fields are optional. If no filters are provided, all notifications are returned.
@@ -75,7 +89,7 @@ type NotifAINotification struct {
 	Message   string   `json:"message"`
 	Type      string   `json:"type,omitempty"`
 	Tags      []string `json:"tags,omitempty"`
-	ActionURL string   `json:"action_url,omitempty"`
+	ActionURL string   `json:"actionURL,omitempty"`
 }
 
 // NotifAIResponse is the response from the NotifAI endpoint.

@@ -326,11 +326,19 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		if resp.StatusCode >= 400 {
 			var errorMsg string
 
-			// Try to parse error response
-			var apiResponse SendResponse
-			if err := json.Unmarshal(bodyBytes, &apiResponse); err == nil && apiResponse.Message != "" {
-				errorMsg = apiResponse.Message
+			// Try to parse nested error response
+			var errorResp ErrorResponse
+			if err := json.Unmarshal(bodyBytes, &errorResp); err == nil && errorResp.Error.Message != "" {
+				// Format error message with details
+				errorMsg = errorResp.Error.Message
+				if errorResp.Error.Param != "" {
+					errorMsg = fmt.Sprintf("%s (parameter: %s)", errorMsg, errorResp.Error.Param)
+				}
+				if errorResp.Error.Code != "" {
+					errorMsg = fmt.Sprintf("%s [%s]", errorMsg, errorResp.Error.Code)
+				}
 			} else {
+				// Fallback to raw response if parsing fails
 				errorMsg = string(bodyBytes)
 			}
 
@@ -436,11 +444,19 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 		if resp.StatusCode >= 400 {
 			var errorMsg string
 
-			// Try to parse error response
-			var errResponse NotifAIResponse
-			if err := json.Unmarshal(bodyBytes, &errResponse); err == nil && errResponse.Message != "" {
-				errorMsg = errResponse.Message
+			// Try to parse nested error response
+			var errorResp ErrorResponse
+			if err := json.Unmarshal(bodyBytes, &errorResp); err == nil && errorResp.Error.Message != "" {
+				// Format error message with details
+				errorMsg = errorResp.Error.Message
+				if errorResp.Error.Param != "" {
+					errorMsg = fmt.Sprintf("%s (parameter: %s)", errorMsg, errorResp.Error.Param)
+				}
+				if errorResp.Error.Code != "" {
+					errorMsg = fmt.Sprintf("%s [%s]", errorMsg, errorResp.Error.Code)
+				}
 			} else {
+				// Fallback to raw response if parsing fails
 				errorMsg = string(bodyBytes)
 			}
 
