@@ -32,7 +32,7 @@ import (
 )
 
 func main() {
-	client := wirepusher.NewClient("YOUR_TOKEN")
+	client := wirepusher.NewClient("abc12345")
 
 	err := client.SendSimple(context.Background(),
 		"Deploy Complete",
