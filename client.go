@@ -33,7 +33,7 @@ import (
 
 const (
 	// DefaultAPIURL is the default WirePusher API endpoint.
-	DefaultAPIURL = "https://wirepusher.com/send"
+	DefaultAPIURL = "https://api.wirepusher.dev/send"
 
 	// DefaultTimeout is the default HTTP request timeout.
 	DefaultTimeout = 30 * time.Second
@@ -244,10 +244,6 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 
 	if options.Title == "" {
 		return &ValidationError{Message: "title is required", StatusCode: 0}
-	}
-
-	if options.Message == "" {
-		return &ValidationError{Message: "message is required", StatusCode: 0}
 	}
 
 	// Normalize tags

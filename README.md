@@ -233,7 +233,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error
 - `ctx` (context.Context, required): Context for cancellation and timeouts
 - `options` (*SendOptions, required): Notification options
   - `Title` (string, required): Notification title
-  - `Message` (string, required): Notification message
+  - `Message` (string, optional): Notification message
   - `Type` (string, optional): Category for organization
   - `Tags` ([]string, optional): Tags for filtering (automatically normalized)
   - `ImageURL` (string, optional): Image URL to display
@@ -316,6 +316,37 @@ func main() {
 ```
 
 **Error Types:** `AuthError`, `ValidationError`, `RateLimitError`, `ServerError`, `NetworkError`, `Error`
+
+## Validation Philosophy
+
+This library performs **minimal client-side validation** to ensure the API remains the source of truth:
+
+### ✅ We Validate
+
+- **Required parameters**: `title` and `token`
+- **Parameter types**: Ensuring correct Go types
+
+### ✅ We Normalize
+
+- **Tags**: Lowercase conversion, whitespace trimming, deduplication, and invalid character filtering
+- **Logging**: Debug logs when normalization occurs
+
+### ❌ We Don't Validate
+
+- **Message**: Optional parameter (not required by API)
+- **Tag limits**: API validates max 10 tags, 50 characters each
+- **Business rules**: Rules that may change server-side
+
+### Why This Approach?
+
+**The API is the source of truth.** Client-side validation of business rules can create false negatives when API rules evolve independently of client library updates. By performing minimal validation:
+
+- ✅ Valid requests are never rejected due to outdated client logic
+- ✅ API error messages provide detailed context (error codes, param names)
+- ✅ Less maintenance burden across client libraries
+- ✅ Consistent behavior as API evolves
+
+The API returns comprehensive error responses with `type`, `code`, `message`, and `param` fields to help you debug validation failures.
 
 ## Examples
 

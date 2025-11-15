@@ -253,6 +253,40 @@ func TestClient_Send(t *testing.T) {
 		}
 	})
 
+	t.Run("message is optional", func(t *testing.T) {
+		var receivedBody map[string]interface{}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &receivedBody)
+
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		// Send with title only, no message
+		err := client.Send(context.Background(), &SendOptions{
+			Title: "Test Title",
+			// No message provided
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error for title-only notification, got: %v", err)
+		}
+
+		if receivedBody["title"] != "Test Title" {
+			t.Errorf("expected title 'Test Title', got '%v'", receivedBody["title"])
+		}
+
+		// Message field should be empty string (not sent or sent as "")
+		if msg, ok := receivedBody["message"]; ok && msg != "" {
+			t.Errorf("expected message to be empty or absent, got '%v'", msg)
+		}
+	})
+
 	t.Run("validation errors", func(t *testing.T) {
 		client := NewClient("abc12345")
 
@@ -272,12 +306,6 @@ func TestClient_Send(t *testing.T) {
 				name:          "empty title",
 				options:       &SendOptions{Title: "", Message: "test"},
 				errorContains: "title is required",
-				errorType:     &ValidationError{},
-			},
-			{
-				name:          "empty message",
-				options:       &SendOptions{Title: "test", Message: ""},
-				errorContains: "message is required",
 				errorType:     &ValidationError{},
 			},
 		}
