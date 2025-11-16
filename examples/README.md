@@ -94,6 +94,22 @@ go run main.go
 - Backward compatibility (unencrypted messages still work)
 - Uses only Go standard library (no external dependencies)
 
+### Rate Limit Monitoring
+
+Monitoring and utilizing rate limit information:
+
+```bash
+cd examples/rate-limits
+go run main.go
+```
+
+**What it demonstrates:**
+- Accessing `client.LastRateLimit` after requests
+- Reading limit, remaining, and reset time
+- Proactive rate limit checking before exhaustion
+- Smart scheduling based on available quota
+- Calculating sustainable sending rates
+
 ## Example Code Structure
 
 Each example follows the same structure:
@@ -138,6 +154,7 @@ cd ../advanced && go build -o advanced
 cd ../context && go build -o context
 cd ../errors && go build -o errors
 cd ../encryption && go build -o encryption
+cd ../rate-limits && go build -o rate-limits
 
 # Run the built binary
 ./basic

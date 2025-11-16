@@ -19,7 +19,7 @@ The WirePusher team takes security bugs seriously. We appreciate your efforts to
 
 Instead, please report security vulnerabilities via email to:
 
-**security@wirepusher.com**
+**support@wirepusher.dev**
 
 ### What to Include
 
@@ -213,7 +213,7 @@ We thank the following individuals for responsibly disclosing security vulnerabi
 
 For security-related questions that aren't reporting vulnerabilities:
 
-- Email: security@wirepusher.com
-- General questions: support@wirepusher.com
+- Email: support@wirepusher.dev
+- General questions: support@wirepusher.dev
 
 Thank you for helping keep WirePusher and its users safe!

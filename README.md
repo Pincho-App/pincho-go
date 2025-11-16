@@ -88,6 +88,18 @@ if err != nil {
 
 Automatic retry with exponential backoff for network errors, 5xx, and 429 (rate limit).
 
+## Smart Rate Limiting
+
+The client automatically respects `Retry-After` headers and tracks rate limit information:
+
+```go
+err := client.Send(ctx, options)
+// Check rate limit info after any request
+if info := client.LastRateLimit; info != nil {
+    fmt.Printf("Remaining: %d/%d, Resets: %s\n", info.Remaining, info.Limit, info.Reset)
+}
+```
+
 ## Requirements
 
 - Go 1.18+
