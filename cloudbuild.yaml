@@ -159,5 +159,4 @@ artifacts:
     paths:
       - 'coverage.out'
       - 'go.mod'
-      - 'go.sum'
       - 'README.md'
