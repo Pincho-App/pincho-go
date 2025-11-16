@@ -62,11 +62,11 @@ steps:
         echo "Running tests with race detector and coverage..."
         go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
 
-        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        COV=$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//')
         echo ""
-        echo "Coverage: $COVERAGE%"
+        echo "Coverage: $$COV%"
 
-        if [ $(echo "$COVERAGE < 90" | bc) -eq 1 ]; then
+        if [ $$(echo "$$COV < 90" | bc) -eq 1 ]; then
           echo "❌ Coverage is below 90%"
           exit 1
         fi
