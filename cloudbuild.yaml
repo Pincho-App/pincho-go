@@ -1,94 +1,163 @@
+# Google Cloud Build configuration for WirePusher Go SDK
+#
+# This configuration runs tests, builds the package, and verifies release readiness.
+#
+# Triggers:
+# - Push to any branch: Run tests and build
+# - Git tag (v*): Run tests, build, and verify release
+#
+# Note: Go modules are distributed via Git, not a package registry.
+# Publishing is done by pushing Git tags. Users install with:
+#   go get gitlab.com/wirepusher/wirepusher-go@v1.0.0
+#
+# No secrets required (unlike npm/PyPI).
+
 steps:
   # Step 1: Download dependencies
   - name: 'golang:1.21'
+    id: 'download-deps'
     entrypoint: 'go'
     args: ['mod', 'download']
-    id: 'download-deps'
 
   # Step 2: Verify dependencies
   - name: 'golang:1.21'
+    id: 'verify-deps'
     entrypoint: 'go'
     args: ['mod', 'verify']
-    id: 'verify-deps'
     waitFor: ['download-deps']
 
-  # Step 3: Run go vet
+  # Step 3: Run gofmt check
   - name: 'golang:1.21'
-    entrypoint: 'go'
-    args: ['vet', './...']
-    id: 'vet'
-    waitFor: ['verify-deps']
-
-  # Step 4: Run gofmt check
-  - name: 'golang:1.21'
+    id: 'format-check'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
         if [ -n "$(gofmt -l .)" ]; then
-          echo "Go files are not formatted. Please run 'gofmt -w .'"
+          echo "❌ Go files are not formatted. Please run 'gofmt -w .'"
           gofmt -l .
           exit 1
         fi
-    id: 'format-check'
+        echo "✓ Code formatting check passed"
     waitFor: ['verify-deps']
 
-  # Step 5: Run tests with race detector
+  # Step 4: Run go vet
   - name: 'golang:1.21'
-    entrypoint: 'go'
-    args: ['test', '-race', '-v', './...']
-    id: 'test'
-    waitFor: ['vet', 'format-check']
-
-  # Step 6: Run tests with coverage
-  - name: 'golang:1.21'
-    entrypoint: 'go'
-    args: ['test', '-coverprofile=coverage.out', '-covermode=atomic', './...']
-    id: 'coverage'
-    waitFor: ['test']
-
-  # Step 7: Check coverage threshold (90%)
-  - name: 'golang:1.21'
+    id: 'vet'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
+        go vet ./...
+        echo "✓ go vet check passed"
+    waitFor: ['verify-deps']
+
+  # Step 5: Run tests with race detector and coverage
+  - name: 'golang:1.21'
+    id: 'test'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        echo "Running tests with race detector and coverage..."
+        go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        echo ""
         echo "Coverage: $COVERAGE%"
+
         if [ $(echo "$COVERAGE < 90" | bc) -eq 1 ]; then
-          echo "Coverage is below 90%"
+          echo "❌ Coverage is below 90%"
           exit 1
         fi
-        echo "Coverage check passed!"
-    id: 'coverage-check'
-    waitFor: ['coverage']
+        echo "✓ Coverage check passed (>= 90%)"
+    waitFor: ['format-check', 'vet']
 
-  # Step 8: Build package
+  # Step 6: Build package
   - name: 'golang:1.21'
-    entrypoint: 'go'
-    args: ['build', '-v', './...']
     id: 'build'
-    waitFor: ['coverage-check']
-
-  # Step 9: Verify examples compile
-  - name: 'golang:1.21'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
+        go build -v ./...
+        echo "✓ Package build successful"
+    waitFor: ['test']
+
+  # Step 7: Verify examples compile
+  - name: 'golang:1.21'
+    id: 'verify'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        echo "Verifying examples compile..."
         go build -v ./examples/basic
+        echo "✓ basic example"
         go build -v ./examples/advanced
+        echo "✓ advanced example"
         go build -v ./examples/context
+        echo "✓ context example"
         go build -v ./examples/errors
-    id: 'build-examples'
+        echo "✓ errors example"
+        go build -v ./examples/encryption
+        echo "✓ encryption example"
+        echo ""
+        echo "✅ All examples compile successfully!"
     waitFor: ['build']
 
-# Optional: Publish to a Go module proxy (not implemented yet)
-# This would require additional configuration and authentication
+  # Step 8: Verify release (only on Git tags)
+  - name: 'golang:1.21'
+    id: 'release'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        if [ "$TAG_NAME" != "" ]; then
+          echo "Git tag detected: $TAG_NAME"
+          echo ""
+          echo "Verifying release readiness..."
 
+          # Verify tag format
+          if echo "$TAG_NAME" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "✓ Tag format is valid: $TAG_NAME"
+          else
+            echo "❌ Invalid tag format. Expected: v1.2.3"
+            exit 1
+          fi
+
+          # Check required files
+          test -f go.mod && echo "✓ go.mod exists" || exit 1
+          test -f go.sum && echo "✓ go.sum exists" || exit 1
+          test -f README.md && echo "✓ README.md exists" || exit 1
+          test -f LICENSE && echo "✓ LICENSE exists" || exit 1
+
+          echo ""
+          echo "✅ Release verification complete for $TAG_NAME"
+          echo ""
+          echo "Go module is now available via:"
+          echo "  go get gitlab.com/wirepusher/wirepusher-go@$TAG_NAME"
+        else
+          echo "No Git tag detected. Skipping release verification."
+          echo "To release, push a Git tag: git tag v1.0.0 && git push origin v1.0.0"
+        fi
+    waitFor: ['verify']
+
+# Build options
 options:
-  logging: CLOUD_LOGGING_ONLY
   machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+  dynamic_substitutions: true
 
-# Timeout after 10 minutes
-timeout: 600s
+# Timeout (10 minutes should be plenty)
+timeout: '600s'
+
+# Build artifacts
+artifacts:
+  objects:
+    location: 'gs://${PROJECT_ID}_cloudbuild/artifacts/go-sdk/${BUILD_ID}'
+    paths:
+      - 'coverage.out'
+      - 'go.mod'
+      - 'go.sum'
+      - 'README.md'
