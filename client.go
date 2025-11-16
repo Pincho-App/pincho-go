@@ -34,6 +34,9 @@ import (
 )
 
 const (
+	// Version is the library version.
+	Version = "1.0.0-alpha.7"
+
 	// DefaultAPIURL is the default WirePusher API endpoint.
 	DefaultAPIURL = "https://api.wirepusher.dev/send"
 
@@ -63,6 +66,10 @@ type Client struct {
 	// Logger is the logger for debug/info messages.
 	// Defaults to NoOpLogger (no logging). Use WithLogger() to enable logging.
 	Logger Logger
+
+	// LastRateLimit contains rate limit information from the most recent API response.
+	// This is updated after each successful request.
+	LastRateLimit *RateLimitInfo
 }
 
 // ClientOption is a functional option for configuring the Client.
@@ -217,13 +224,22 @@ func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) e
 
 		// Calculate backoff duration
 		var backoff time.Duration
-		if _, isRateLimit := err.(*RateLimitError); isRateLimit {
-			// Rate limit: use longer backoff (5s, 10s, 20s, capped at 30s)
-			backoff = time.Duration(5*(1<<uint(attempt))) * time.Second
-			if backoff > MaxBackoff {
-				backoff = MaxBackoff
+		if rateLimitErr, isRateLimit := err.(*RateLimitError); isRateLimit {
+			// Use Retry-After header value if provided by server
+			if rateLimitErr.RetryAfter > 0 {
+				backoff = time.Duration(rateLimitErr.RetryAfter) * time.Second
+				if backoff > MaxBackoff {
+					backoff = MaxBackoff
+				}
+				c.logWarning(fmt.Sprintf("Rate limit hit, using server Retry-After: %s", backoff))
+			} else {
+				// Rate limit: use longer backoff (5s, 10s, 20s, capped at 30s)
+				backoff = time.Duration(5*(1<<uint(attempt))) * time.Second
+				if backoff > MaxBackoff {
+					backoff = MaxBackoff
+				}
+				c.logWarning(fmt.Sprintf("Rate limit hit, backing off for %s", backoff))
 			}
-			c.logWarning(fmt.Sprintf("Rate limit hit, backing off for %s", backoff))
 		} else {
 			// Network/server error: exponential backoff (1s, 2s, 4s, 8s, capped at 30s)
 			backoff = time.Duration(1<<uint(attempt)) * time.Second
@@ -350,6 +366,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.Token)
+		req.Header.Set("User-Agent", "wirepusher-go/"+Version)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -388,7 +405,8 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 			case 401, 403:
 				return &AuthError{Message: errorMsg, StatusCode: resp.StatusCode}
 			case 429:
-				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
+				retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
+				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode, RetryAfter: retryAfter}
 			default:
 				if resp.StatusCode >= 500 {
 					return &ServerError{Message: errorMsg, StatusCode: resp.StatusCode}
@@ -396,6 +414,9 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
 			}
 		}
+
+		// Parse rate limit headers from successful response
+		c.parseRateLimitHeaders(resp)
 
 		// Parse success response (optional)
 		var apiResponse SendResponse
@@ -468,6 +489,7 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.Token)
+		req.Header.Set("User-Agent", "wirepusher-go/"+Version)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -506,7 +528,8 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 			case 401, 403:
 				return &AuthError{Message: errorMsg, StatusCode: resp.StatusCode}
 			case 429:
-				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode}
+				retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
+				return &RateLimitError{Message: errorMsg, StatusCode: resp.StatusCode, RetryAfter: retryAfter}
 			default:
 				if resp.StatusCode >= 500 {
 					return &ServerError{Message: errorMsg, StatusCode: resp.StatusCode}
@@ -514,6 +537,9 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 				return &Error{Message: errorMsg, StatusCode: resp.StatusCode}
 			}
 		}
+
+		// Parse rate limit headers from successful response
+		c.parseRateLimitHeaders(resp)
 
 		// Parse success response
 		if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
@@ -529,4 +555,65 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 	}
 
 	return &apiResponse, nil
+}
+
+// parseRetryAfter parses the Retry-After header value (in seconds).
+// Returns 0 if the header is missing or invalid.
+func parseRetryAfter(header string) int {
+	if header == "" {
+		return 0
+	}
+	seconds, err := strconv.Atoi(header)
+	if err != nil || seconds < 0 {
+		return 0
+	}
+	return seconds
+}
+
+// parseIntHeader parses an integer header value.
+// Returns 0 if the header is missing or invalid.
+func parseIntHeader(header string) int {
+	if header == "" {
+		return 0
+	}
+	value, err := strconv.Atoi(header)
+	if err != nil || value < 0 {
+		return 0
+	}
+	return value
+}
+
+// parseUnixTimestamp parses a Unix timestamp header value.
+// Returns zero time if the header is missing or invalid.
+func parseUnixTimestamp(header string) time.Time {
+	if header == "" {
+		return time.Time{}
+	}
+	timestamp, err := strconv.ParseInt(header, 10, 64)
+	if err != nil || timestamp < 0 {
+		return time.Time{}
+	}
+	return time.Unix(timestamp, 0)
+}
+
+// parseRateLimitHeaders parses rate limit headers from the response and updates LastRateLimit.
+func (c *Client) parseRateLimitHeaders(resp *http.Response) {
+	limit := parseIntHeader(resp.Header.Get("RateLimit-Limit"))
+	remaining := parseIntHeader(resp.Header.Get("RateLimit-Remaining"))
+	reset := parseUnixTimestamp(resp.Header.Get("RateLimit-Reset"))
+
+	// Only update if at least one header is present
+	if limit > 0 || remaining > 0 || !reset.IsZero() {
+		c.LastRateLimit = &RateLimitInfo{
+			Limit:     limit,
+			Remaining: remaining,
+			Reset:     reset,
+		}
+	}
+}
+
+// GetRateLimitInfo returns the rate limit information from the most recent API response.
+// Returns nil if no rate limit information is available.
+func (c *Client) GetRateLimitInfo() *RateLimitInfo {
+	return c.LastRateLimit
 }

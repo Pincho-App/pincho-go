@@ -1,5 +1,17 @@
 package wirepusher
 
+import "time"
+
+// RateLimitInfo contains rate limit information from the API response.
+type RateLimitInfo struct {
+	// Limit is the maximum number of requests allowed in the window.
+	Limit int
+	// Remaining is the number of requests remaining in the current window.
+	Remaining int
+	// Reset is the time when the rate limit window resets.
+	Reset time.Time
+}
+
 // SendOptions contains all parameters for sending a notification.
 //
 // Required fields:
