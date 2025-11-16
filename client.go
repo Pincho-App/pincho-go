@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -37,6 +39,9 @@ const (
 
 	// DefaultTimeout is the default HTTP request timeout.
 	DefaultTimeout = 30 * time.Second
+
+	// MaxBackoff is the maximum backoff duration for retries.
+	MaxBackoff = 30 * time.Second
 )
 
 // Client is the WirePusher API client.
@@ -109,11 +114,20 @@ func WithMaxRetries(maxRetries int) ClientOption {
 
 // NewClient creates a new WirePusher client.
 //
-// The token parameter is your WirePusher API token (required).
+// The token parameter is your WirePusher API token. If empty, it reads from
+// WIREPUSHER_TOKEN environment variable.
+//
+// Environment variables (used as defaults):
+//   - WIREPUSHER_TOKEN: API token (required if token param is empty)
+//   - WIREPUSHER_TIMEOUT: Request timeout in seconds (default: 30)
+//   - WIREPUSHER_MAX_RETRIES: Maximum retry attempts (default: 3)
 //
 // Examples:
 //
-//	// Basic client
+//	// Auto-load token from WIREPUSHER_TOKEN
+//	client := wirepusher.NewClient("")
+//
+//	// Explicit token
 //	client := wirepusher.NewClient("abc12345")
 //
 //	// With custom timeout
@@ -128,17 +142,37 @@ func WithMaxRetries(maxRetries int) ClientOption {
 //	    wirepusher.WithHTTPClient(customHTTPClient),
 //	)
 func NewClient(token string, opts ...ClientOption) *Client {
+	// Auto-load token from environment variable if not provided
 	if token == "" {
-		panic("wirepusher: token is required")
+		token = os.Getenv("WIREPUSHER_TOKEN")
+	}
+	if token == "" {
+		panic("wirepusher: token is required (set WIREPUSHER_TOKEN or pass to NewClient)")
+	}
+
+	// Default timeout (can be overridden by env var or option)
+	timeout := DefaultTimeout
+	if envTimeout := os.Getenv("WIREPUSHER_TIMEOUT"); envTimeout != "" {
+		if seconds, err := strconv.Atoi(envTimeout); err == nil && seconds > 0 {
+			timeout = time.Duration(seconds) * time.Second
+		}
+	}
+
+	// Default max retries (can be overridden by env var or option)
+	maxRetries := 3
+	if envRetries := os.Getenv("WIREPUSHER_MAX_RETRIES"); envRetries != "" {
+		if retries, err := strconv.Atoi(envRetries); err == nil && retries >= 0 {
+			maxRetries = retries
+		}
 	}
 
 	client := &Client{
 		Token:  token,
 		APIURL: DefaultAPIURL,
 		HTTPClient: &http.Client{
-			Timeout: DefaultTimeout,
+			Timeout: timeout,
 		},
-		MaxRetries: 3,             // Default: 3 retries with exponential backoff
+		MaxRetries: maxRetries,
 		Logger:     &NoOpLogger{}, // Default: no logging
 	}
 
@@ -184,12 +218,18 @@ func (c *Client) retryWithBackoff(ctx context.Context, operation func() error) e
 		// Calculate backoff duration
 		var backoff time.Duration
 		if _, isRateLimit := err.(*RateLimitError); isRateLimit {
-			// Rate limit: use longer backoff (5s, 10s, 20s)
+			// Rate limit: use longer backoff (5s, 10s, 20s, capped at 30s)
 			backoff = time.Duration(5*(1<<uint(attempt))) * time.Second
+			if backoff > MaxBackoff {
+				backoff = MaxBackoff
+			}
 			c.logWarning(fmt.Sprintf("Rate limit hit, backing off for %s", backoff))
 		} else {
-			// Network/server error: exponential backoff (1s, 2s, 4s, 8s)
+			// Network/server error: exponential backoff (1s, 2s, 4s, 8s, capped at 30s)
 			backoff = time.Duration(1<<uint(attempt)) * time.Second
+			if backoff > MaxBackoff {
+				backoff = MaxBackoff
+			}
 			c.logDebug(fmt.Sprintf("Retryable error, backing off for %s: %v", backoff, err))
 		}
 
@@ -278,7 +318,6 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	body := map[string]interface{}{
 		"title":   options.Title,
 		"message": finalMessage,
-		"token":   c.Token,
 	}
 
 	if options.Type != "" {
@@ -310,6 +349,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.Token)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -392,8 +432,7 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 
 	// Build request body
 	body := map[string]interface{}{
-		"text":  options.Text,
-		"token": c.Token,
+		"text": options.Text,
 	}
 
 	if options.Type != "" {
@@ -428,6 +467,7 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.Token)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {

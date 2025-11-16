@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,6 +123,118 @@ func TestNewClient(t *testing.T) {
 			t.Errorf("expected MaxRetries to be 0, got %d", client.MaxRetries)
 		}
 	})
+
+	t.Run("reads token from env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TOKEN", "env_token_123")
+		defer os.Unsetenv("WIREPUSHER_TOKEN")
+
+		client := NewClient("")
+
+		if client.Token != "env_token_123" {
+			t.Errorf("expected token 'env_token_123', got '%s'", client.Token)
+		}
+	})
+
+	t.Run("reads timeout from env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TIMEOUT", "60")
+		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+
+		client := NewClient("abc12345")
+
+		expectedTimeout := 60 * time.Second
+		if client.HTTPClient.Timeout != expectedTimeout {
+			t.Errorf("expected timeout %v, got %v", expectedTimeout, client.HTTPClient.Timeout)
+		}
+	})
+
+	t.Run("reads max retries from env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_MAX_RETRIES", "10")
+		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+
+		client := NewClient("abc12345")
+
+		if client.MaxRetries != 10 {
+			t.Errorf("expected MaxRetries 10, got %d", client.MaxRetries)
+		}
+	})
+
+	t.Run("explicit token overrides env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TOKEN", "env_token_123")
+		defer os.Unsetenv("WIREPUSHER_TOKEN")
+
+		client := NewClient("explicit_token")
+
+		if client.Token != "explicit_token" {
+			t.Errorf("expected token 'explicit_token', got '%s'", client.Token)
+		}
+	})
+
+	t.Run("option overrides env var timeout", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TIMEOUT", "60")
+		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+
+		client := NewClient("abc12345", WithTimeout(120*time.Second))
+
+		expectedTimeout := 120 * time.Second
+		if client.HTTPClient.Timeout != expectedTimeout {
+			t.Errorf("expected timeout %v, got %v", expectedTimeout, client.HTTPClient.Timeout)
+		}
+	})
+
+	t.Run("option overrides env var max retries", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_MAX_RETRIES", "10")
+		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+
+		client := NewClient("abc12345", WithMaxRetries(20))
+
+		if client.MaxRetries != 20 {
+			t.Errorf("expected MaxRetries 20, got %d", client.MaxRetries)
+		}
+	})
+
+	t.Run("ignores invalid timeout env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TIMEOUT", "invalid")
+		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+
+		client := NewClient("abc12345")
+
+		if client.HTTPClient.Timeout != DefaultTimeout {
+			t.Errorf("expected default timeout %v, got %v", DefaultTimeout, client.HTTPClient.Timeout)
+		}
+	})
+
+	t.Run("ignores negative timeout env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_TIMEOUT", "-5")
+		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+
+		client := NewClient("abc12345")
+
+		if client.HTTPClient.Timeout != DefaultTimeout {
+			t.Errorf("expected default timeout %v, got %v", DefaultTimeout, client.HTTPClient.Timeout)
+		}
+	})
+
+	t.Run("ignores invalid max retries env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_MAX_RETRIES", "invalid")
+		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+
+		client := NewClient("abc12345")
+
+		if client.MaxRetries != 3 {
+			t.Errorf("expected default MaxRetries 3, got %d", client.MaxRetries)
+		}
+	})
+
+	t.Run("ignores negative max retries env var", func(t *testing.T) {
+		os.Setenv("WIREPUSHER_MAX_RETRIES", "-5")
+		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+
+		client := NewClient("abc12345")
+
+		if client.MaxRetries != 3 {
+			t.Errorf("expected default MaxRetries 3, got %d", client.MaxRetries)
+		}
+	})
 }
 
 func TestClient_SendSimple(t *testing.T) {
@@ -196,6 +309,11 @@ func TestClient_Send(t *testing.T) {
 				t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
 			}
 
+			// Verify Authorization header
+			if r.Header.Get("Authorization") != "Bearer abc12345" {
+				t.Errorf("expected Authorization 'Bearer abc12345', got '%s'", r.Header.Get("Authorization"))
+			}
+
 			// Parse body
 			body, _ := io.ReadAll(r.Body)
 			json.Unmarshal(body, &receivedBody)
@@ -248,8 +366,9 @@ func TestClient_Send(t *testing.T) {
 			t.Errorf("expected actionURL, got '%v'", receivedBody["actionURL"])
 		}
 
-		if receivedBody["token"] != "abc12345" {
-			t.Errorf("expected token 'abc12345', got '%v'", receivedBody["token"])
+		// Token should NOT be in body (now sent via Authorization header)
+		if _, hasToken := receivedBody["token"]; hasToken {
+			t.Errorf("token should not be in body, got '%v'", receivedBody["token"])
 		}
 	})
 
@@ -831,6 +950,11 @@ func TestClient_NotifAI(t *testing.T) {
 				t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
 			}
 
+			// Verify Authorization header
+			if r.Header.Get("Authorization") != "Bearer abc12345" {
+				t.Errorf("expected Authorization 'Bearer abc12345', got '%s'", r.Header.Get("Authorization"))
+			}
+
 			// Parse body
 			body, _ := io.ReadAll(r.Body)
 			json.Unmarshal(body, &receivedBody)
@@ -869,8 +993,9 @@ func TestClient_NotifAI(t *testing.T) {
 			t.Errorf("expected type 'deployment', got '%v'", receivedBody["type"])
 		}
 
-		if receivedBody["token"] != "abc12345" {
-			t.Errorf("expected token 'abc12345', got '%v'", receivedBody["token"])
+		// Token should NOT be in body (now sent via Authorization header)
+		if _, hasToken := receivedBody["token"]; hasToken {
+			t.Errorf("token should not be in body, got '%v'", receivedBody["token"])
 		}
 
 		// Verify response
