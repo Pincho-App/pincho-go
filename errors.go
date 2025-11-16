@@ -1,7 +1,26 @@
 package wirepusher
 
 import (
+	"errors"
 	"fmt"
+)
+
+// Sentinel errors for use with errors.Is().
+var (
+	// ErrAuth is returned for authentication errors (401/403).
+	ErrAuth = errors.New("wirepusher: authentication error")
+
+	// ErrValidation is returned for validation errors (400).
+	ErrValidation = errors.New("wirepusher: validation error")
+
+	// ErrRateLimit is returned for rate limit errors (429).
+	ErrRateLimit = errors.New("wirepusher: rate limit error")
+
+	// ErrServer is returned for server errors (5xx).
+	ErrServer = errors.New("wirepusher: server error")
+
+	// ErrNetwork is returned for network/connection errors.
+	ErrNetwork = errors.New("wirepusher: network error")
 )
 
 // Error represents a general WirePusher API error.
@@ -38,6 +57,11 @@ func (e *ServerError) IsRetryable() bool {
 	return true
 }
 
+// Is implements the errors.Is interface for ServerError.
+func (e *ServerError) Is(target error) bool {
+	return target == ErrServer
+}
+
 // NetworkError represents a network or connection error.
 type NetworkError struct {
 	Message string
@@ -54,6 +78,11 @@ func (e *NetworkError) Error() string {
 // IsRetryable returns true - network errors should be retried.
 func (e *NetworkError) IsRetryable() bool {
 	return true
+}
+
+// Is implements the errors.Is interface for NetworkError.
+func (e *NetworkError) Is(target error) bool {
+	return target == ErrNetwork
 }
 
 // Unwrap returns the original error for error chain support.
@@ -76,6 +105,11 @@ func (e *AuthError) IsRetryable() bool {
 	return false
 }
 
+// Is implements the errors.Is interface for AuthError.
+func (e *AuthError) Is(target error) bool {
+	return target == ErrAuth
+}
+
 // ValidationError represents a validation error (400).
 type ValidationError struct {
 	Message    string
@@ -89,6 +123,11 @@ func (e *ValidationError) Error() string {
 // IsRetryable returns false - validation errors are not retryable.
 func (e *ValidationError) IsRetryable() bool {
 	return false
+}
+
+// Is implements the errors.Is interface for ValidationError.
+func (e *ValidationError) Is(target error) bool {
+	return target == ErrValidation
 }
 
 // RateLimitError represents a rate limit error (429).
@@ -105,6 +144,11 @@ func (e *RateLimitError) Error() string {
 // IsRetryable returns true - rate limit errors should be retried with backoff.
 func (e *RateLimitError) IsRetryable() bool {
 	return true
+}
+
+// Is implements the errors.Is interface for RateLimitError.
+func (e *RateLimitError) Is(target error) bool {
+	return target == ErrRateLimit
 }
 
 // RetryableError is an interface for errors that can be retried.

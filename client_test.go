@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -889,6 +890,126 @@ func TestErrorTypes(t *testing.T) {
 		unwrapped := err.Unwrap()
 		if unwrapped != originalErr {
 			t.Errorf("expected unwrapped error to be original error")
+		}
+	})
+}
+
+func TestErrorsIs(t *testing.T) {
+	t.Run("AuthError matches ErrAuth", func(t *testing.T) {
+		err := &AuthError{Message: "unauthorized", StatusCode: 401}
+		if !errors.Is(err, ErrAuth) {
+			t.Error("expected AuthError to match ErrAuth")
+		}
+	})
+
+	t.Run("AuthError does not match ErrValidation", func(t *testing.T) {
+		err := &AuthError{Message: "unauthorized", StatusCode: 401}
+		if errors.Is(err, ErrValidation) {
+			t.Error("expected AuthError to not match ErrValidation")
+		}
+	})
+
+	t.Run("ValidationError matches ErrValidation", func(t *testing.T) {
+		err := &ValidationError{Message: "invalid", StatusCode: 400}
+		if !errors.Is(err, ErrValidation) {
+			t.Error("expected ValidationError to match ErrValidation")
+		}
+	})
+
+	t.Run("RateLimitError matches ErrRateLimit", func(t *testing.T) {
+		err := &RateLimitError{Message: "too many requests", StatusCode: 429}
+		if !errors.Is(err, ErrRateLimit) {
+			t.Error("expected RateLimitError to match ErrRateLimit")
+		}
+	})
+
+	t.Run("ServerError matches ErrServer", func(t *testing.T) {
+		err := &ServerError{Message: "internal error", StatusCode: 500}
+		if !errors.Is(err, ErrServer) {
+			t.Error("expected ServerError to match ErrServer")
+		}
+	})
+
+	t.Run("NetworkError matches ErrNetwork", func(t *testing.T) {
+		err := &NetworkError{Message: "connection failed", Err: nil}
+		if !errors.Is(err, ErrNetwork) {
+			t.Error("expected NetworkError to match ErrNetwork")
+		}
+	})
+
+	t.Run("sentinel errors work directly", func(t *testing.T) {
+		if !errors.Is(ErrAuth, ErrAuth) {
+			t.Error("expected ErrAuth to match itself")
+		}
+		if !errors.Is(ErrValidation, ErrValidation) {
+			t.Error("expected ErrValidation to match itself")
+		}
+		if !errors.Is(ErrRateLimit, ErrRateLimit) {
+			t.Error("expected ErrRateLimit to match itself")
+		}
+		if !errors.Is(ErrServer, ErrServer) {
+			t.Error("expected ErrServer to match itself")
+		}
+		if !errors.Is(ErrNetwork, ErrNetwork) {
+			t.Error("expected ErrNetwork to match itself")
+		}
+	})
+}
+
+func TestErrorsAs(t *testing.T) {
+	t.Run("AuthError can be extracted with errors.As", func(t *testing.T) {
+		var err error = &AuthError{Message: "unauthorized", StatusCode: 401}
+		var authErr *AuthError
+		if !errors.As(err, &authErr) {
+			t.Error("expected to extract AuthError with errors.As")
+		}
+		if authErr.StatusCode != 401 {
+			t.Errorf("expected StatusCode 401, got %d", authErr.StatusCode)
+		}
+	})
+
+	t.Run("ValidationError can be extracted with errors.As", func(t *testing.T) {
+		var err error = &ValidationError{Message: "invalid", StatusCode: 400}
+		var validationErr *ValidationError
+		if !errors.As(err, &validationErr) {
+			t.Error("expected to extract ValidationError with errors.As")
+		}
+		if validationErr.Message != "invalid" {
+			t.Errorf("expected Message 'invalid', got '%s'", validationErr.Message)
+		}
+	})
+
+	t.Run("RateLimitError can be extracted with errors.As", func(t *testing.T) {
+		var err error = &RateLimitError{Message: "too many", StatusCode: 429, RetryAfter: 60}
+		var rateLimitErr *RateLimitError
+		if !errors.As(err, &rateLimitErr) {
+			t.Error("expected to extract RateLimitError with errors.As")
+		}
+		if rateLimitErr.RetryAfter != 60 {
+			t.Errorf("expected RetryAfter 60, got %d", rateLimitErr.RetryAfter)
+		}
+	})
+
+	t.Run("ServerError can be extracted with errors.As", func(t *testing.T) {
+		var err error = &ServerError{Message: "internal", StatusCode: 500}
+		var serverErr *ServerError
+		if !errors.As(err, &serverErr) {
+			t.Error("expected to extract ServerError with errors.As")
+		}
+		if serverErr.StatusCode != 500 {
+			t.Errorf("expected StatusCode 500, got %d", serverErr.StatusCode)
+		}
+	})
+
+	t.Run("NetworkError can be extracted with errors.As", func(t *testing.T) {
+		originalErr := fmt.Errorf("connection refused")
+		var err error = &NetworkError{Message: "failed", Err: originalErr}
+		var networkErr *NetworkError
+		if !errors.As(err, &networkErr) {
+			t.Error("expected to extract NetworkError with errors.As")
+		}
+		if networkErr.Err != originalErr {
+			t.Error("expected Err to be original error")
 		}
 	})
 }

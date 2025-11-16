@@ -68,20 +68,22 @@ client := wirepusher.NewClient(
 
 ## Error Handling
 
+Use sentinel errors with `errors.Is()` or type assertions with `errors.As()`:
+
 ```go
 err := client.Send(ctx, options)
 if err != nil {
-    switch e := err.(type) {
-    case *wirepusher.AuthError:
-        log.Printf("Invalid token: %s", e.Message)
-    case *wirepusher.ValidationError:
-        log.Printf("Invalid parameters: %s", e.Message)
-    case *wirepusher.RateLimitError:
-        log.Printf("Rate limited: %s", e.Message)
-    case *wirepusher.ServerError:
-        log.Printf("Server error: %s", e.Message)
-    case *wirepusher.NetworkError:
-        log.Printf("Network error: %v", e.Unwrap())
+    // Check error type with errors.Is()
+    if errors.Is(err, wirepusher.ErrAuth) {
+        log.Printf("Authentication failed")
+    } else if errors.Is(err, wirepusher.ErrRateLimit) {
+        log.Printf("Rate limited")
+    }
+
+    // Or extract error details with errors.As()
+    var rateLimitErr *wirepusher.RateLimitError
+    if errors.As(err, &rateLimitErr) {
+        log.Printf("Retry after %d seconds", rateLimitErr.RetryAfter)
     }
 }
 ```
