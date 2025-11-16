@@ -95,6 +95,7 @@ func (e *ValidationError) IsRetryable() bool {
 type RateLimitError struct {
 	Message    string
 	StatusCode int
+	RetryAfter int // Retry-After value in seconds (0 if not provided by server)
 }
 
 func (e *RateLimitError) Error() string {

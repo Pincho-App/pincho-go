@@ -314,6 +314,12 @@ func TestClient_Send(t *testing.T) {
 				t.Errorf("expected Authorization 'Bearer abc12345', got '%s'", r.Header.Get("Authorization"))
 			}
 
+			// Verify User-Agent header
+			expectedUA := "wirepusher-go/" + Version
+			if r.Header.Get("User-Agent") != expectedUA {
+				t.Errorf("expected User-Agent '%s', got '%s'", expectedUA, r.Header.Get("User-Agent"))
+			}
+
 			// Parse body
 			body, _ := io.ReadAll(r.Body)
 			json.Unmarshal(body, &receivedBody)
@@ -933,6 +939,340 @@ func TestIsErrorRetryable(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRetryAfterParsing(t *testing.T) {
+	t.Run("parses valid Retry-After header", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(429)
+			w.Write([]byte(`{"status": "error", "error": {"type": "rate_limit_error", "code": "rate_limit_exceeded", "message": "Rate limit exceeded"}}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		rateLimitErr, ok := err.(*RateLimitError)
+		if !ok {
+			t.Fatalf("expected RateLimitError, got %T", err)
+		}
+
+		if rateLimitErr.RetryAfter != 60 {
+			t.Errorf("expected RetryAfter to be 60, got %d", rateLimitErr.RetryAfter)
+		}
+	})
+
+	t.Run("handles missing Retry-After header", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(429)
+			w.Write([]byte(`{"status": "error", "error": {"type": "rate_limit_error", "code": "rate_limit_exceeded", "message": "Rate limit exceeded"}}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		rateLimitErr, ok := err.(*RateLimitError)
+		if !ok {
+			t.Fatalf("expected RateLimitError, got %T", err)
+		}
+
+		if rateLimitErr.RetryAfter != 0 {
+			t.Errorf("expected RetryAfter to be 0 when header is missing, got %d", rateLimitErr.RetryAfter)
+		}
+	})
+
+	t.Run("handles invalid Retry-After header", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Retry-After", "invalid")
+			w.WriteHeader(429)
+			w.Write([]byte(`{"status": "error", "error": {"type": "rate_limit_error", "code": "rate_limit_exceeded", "message": "Rate limit exceeded"}}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		rateLimitErr, ok := err.(*RateLimitError)
+		if !ok {
+			t.Fatalf("expected RateLimitError, got %T", err)
+		}
+
+		if rateLimitErr.RetryAfter != 0 {
+			t.Errorf("expected RetryAfter to be 0 when header is invalid, got %d", rateLimitErr.RetryAfter)
+		}
+	})
+
+	t.Run("handles negative Retry-After header", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Retry-After", "-10")
+			w.WriteHeader(429)
+			w.Write([]byte(`{"status": "error", "error": {"type": "rate_limit_error", "code": "rate_limit_exceeded", "message": "Rate limit exceeded"}}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL), WithMaxRetries(0))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		rateLimitErr, ok := err.(*RateLimitError)
+		if !ok {
+			t.Fatalf("expected RateLimitError, got %T", err)
+		}
+
+		if rateLimitErr.RetryAfter != 0 {
+			t.Errorf("expected RetryAfter to be 0 when header is negative, got %d", rateLimitErr.RetryAfter)
+		}
+	})
+}
+
+func TestRateLimitInfoParsing(t *testing.T) {
+	t.Run("parses all rate limit headers", func(t *testing.T) {
+		resetTime := time.Now().Add(1 * time.Hour).Unix()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("RateLimit-Limit", "100")
+			w.Header().Set("RateLimit-Remaining", "95")
+			w.Header().Set("RateLimit-Reset", fmt.Sprintf("%d", resetTime))
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		info := client.GetRateLimitInfo()
+		if info == nil {
+			t.Fatal("expected rate limit info, got nil")
+		}
+
+		if info.Limit != 100 {
+			t.Errorf("expected Limit to be 100, got %d", info.Limit)
+		}
+
+		if info.Remaining != 95 {
+			t.Errorf("expected Remaining to be 95, got %d", info.Remaining)
+		}
+
+		if info.Reset.Unix() != resetTime {
+			t.Errorf("expected Reset to be %d, got %d", resetTime, info.Reset.Unix())
+		}
+	})
+
+	t.Run("handles missing rate limit headers", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		info := client.GetRateLimitInfo()
+		if info != nil {
+			t.Errorf("expected nil rate limit info when headers are missing, got %+v", info)
+		}
+	})
+
+	t.Run("handles partial rate limit headers", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("RateLimit-Limit", "100")
+			// Missing RateLimit-Remaining and RateLimit-Reset
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		info := client.GetRateLimitInfo()
+		if info == nil {
+			t.Fatal("expected rate limit info with partial headers, got nil")
+		}
+
+		if info.Limit != 100 {
+			t.Errorf("expected Limit to be 100, got %d", info.Limit)
+		}
+
+		if info.Remaining != 0 {
+			t.Errorf("expected Remaining to be 0 when header is missing, got %d", info.Remaining)
+		}
+
+		if !info.Reset.IsZero() {
+			t.Errorf("expected Reset to be zero when header is missing, got %v", info.Reset)
+		}
+	})
+
+	t.Run("handles invalid rate limit headers", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("RateLimit-Limit", "invalid")
+			w.Header().Set("RateLimit-Remaining", "not-a-number")
+			w.Header().Set("RateLimit-Reset", "bad-timestamp")
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test",
+			Message: "Test",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		info := client.GetRateLimitInfo()
+		if info != nil {
+			t.Errorf("expected nil rate limit info when all headers are invalid, got %+v", info)
+		}
+	})
+
+	t.Run("updates rate limit info on subsequent requests", func(t *testing.T) {
+		requestCount := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCount++
+			remaining := 100 - requestCount
+			w.Header().Set("RateLimit-Limit", "100")
+			w.Header().Set("RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+			w.Header().Set("RateLimit-Reset", "1700000000")
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success", "message": "Notification sent"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		// First request
+		err := client.Send(context.Background(), &SendOptions{
+			Title:   "Test 1",
+			Message: "Test",
+		})
+		if err != nil {
+			t.Fatalf("first request failed: %v", err)
+		}
+
+		info1 := client.GetRateLimitInfo()
+		if info1 == nil || info1.Remaining != 99 {
+			t.Errorf("expected Remaining to be 99 after first request, got %v", info1)
+		}
+
+		// Second request
+		err = client.Send(context.Background(), &SendOptions{
+			Title:   "Test 2",
+			Message: "Test",
+		})
+		if err != nil {
+			t.Fatalf("second request failed: %v", err)
+		}
+
+		info2 := client.GetRateLimitInfo()
+		if info2 == nil || info2.Remaining != 98 {
+			t.Errorf("expected Remaining to be 98 after second request, got %v", info2)
+		}
+	})
+
+	t.Run("rate limit info parsed in NotifAI", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("RateLimit-Limit", "50")
+			w.Header().Set("RateLimit-Remaining", "45")
+			w.Header().Set("RateLimit-Reset", "1700000000")
+			w.WriteHeader(200)
+			w.Write([]byte(`{
+				"status": "success",
+				"message": "Notification generated and sent",
+				"notification": {
+					"title": "Test",
+					"message": "Test message"
+				}
+			}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		_, err := client.NotifAI(context.Background(), &NotifAIOptions{
+			Text: "test notification",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		info := client.GetRateLimitInfo()
+		if info == nil {
+			t.Fatal("expected rate limit info, got nil")
+		}
+
+		if info.Limit != 50 {
+			t.Errorf("expected Limit to be 50, got %d", info.Limit)
+		}
+
+		if info.Remaining != 45 {
+			t.Errorf("expected Remaining to be 45, got %d", info.Remaining)
+		}
+	})
 }
 
 func TestClient_NotifAI(t *testing.T) {
