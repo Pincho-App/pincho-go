@@ -158,20 +158,16 @@ steps:
           exit 0
         fi
 
-        echo "=== Sending release notification ==="
-        curl -s -X POST https://api.wirepusher.dev/send \
+        echo "=== Sending release notification via NotifAI ==="
+        curl -s -X POST https://api.wirepusher.dev/notifai \
           -H "Authorization: Bearer $$WIREPUSHER_TOKEN" \
           -H "Content-Type: application/json" \
           -d "{
-            \"title\": \"Go SDK Release $TAG_NAME\",
-            \"message\": \"WirePusher Go SDK $TAG_NAME released successfully. Available via: go get gitlab.com/wirepusher/wirepusher-go@$TAG_NAME\",
-            \"type\": \"release\",
-            \"tags\": [\"go\", \"sdk\", \"release\"],
-            \"actionURL\": \"https://gitlab.com/wirepusher/wirepusher-go/-/tags/$TAG_NAME\"
+            \"text\": \"WirePusher Go SDK $TAG_NAME released successfully. Install via go get gitlab.com/wirepusher/wirepusher-go@$TAG_NAME. View release at https://gitlab.com/wirepusher/wirepusher-go/-/tags/$TAG_NAME\"
           }"
 
         echo ""
-        echo "✓ Release notification sent"
+        echo "✓ Release notification sent via NotifAI"
 
 # Secrets for release notifications
 availableSecrets:
