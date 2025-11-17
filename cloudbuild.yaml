@@ -164,7 +164,8 @@ steps:
           -H "Authorization: Bearer $$WIREPUSHER_TOKEN" \
           -H "Content-Type: application/json" \
           -d "{
-            \"text\": \"WirePusher Go SDK $TAG_NAME released successfully. Install via go get gitlab.com/wirepusher/wirepusher-go@$TAG_NAME. View release at https://gitlab.com/wirepusher/wirepusher-go/-/tags/$TAG_NAME\"
+            \"text\": \"WirePusher Go SDK $TAG_NAME released successfully. Install via go get gitlab.com/wirepusher/wirepusher-go@$TAG_NAME. View release at https://gitlab.com/wirepusher/wirepusher-go/-/tags/$TAG_NAME\",
+            \"type\": \"release\"
           }"
 
         echo ""
