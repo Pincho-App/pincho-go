@@ -128,7 +128,8 @@ steps:
 
           # Check required files
           test -f go.mod && echo "✓ go.mod exists" || exit 1
-          test -f go.sum && echo "✓ go.sum exists" || exit 1
+          # go.sum is optional for stdlib-only packages
+          test -f go.sum && echo "✓ go.sum exists" || echo "ℹ go.sum not present (stdlib-only package)"
           test -f README.md && echo "✓ README.md exists" || exit 1
           test -f LICENSE && echo "✓ LICENSE exists" || exit 1
 
