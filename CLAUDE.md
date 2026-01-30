@@ -1,10 +1,10 @@
-# CLAUDE.md - WirePusher Go Client Library
+# CLAUDE.md - Pincho Go Client Library
 
-Context file for AI-powered development assistance on the WirePusher Go Client Library project.
+Context file for AI-powered development assistance on the Pincho Go Client Library project.
 
 ## Project Overview
 
-**WirePusher Go Client Library** is a Go client library for sending push notifications via [WirePusher](https://wirepusher.dev).
+**Pincho Go Client Library** is a Go client library for sending push notifications via [Pincho](https://pincho.app).
 
 - **Language**: Go 1.18+
 - **Framework**: Standard library only (net/http, encoding/json, context)
@@ -14,7 +14,7 @@ Context file for AI-powered development assistance on the WirePusher Go Client L
 ## Architecture
 
 ```
-wirepusher-go/
+pincho-go/
 ├── client.go              # Main client implementation
 ├── errors.go              # Error types with sentinel errors
 ├── logger.go              # Structured logging
@@ -58,7 +58,7 @@ All methods accept `context.Context`:
 ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 defer cancel()
 
-err := client.Send(ctx, &wirepusher.SendOptions{
+err := client.Send(ctx, &pincho.SendOptions{
     Title:   "Deploy Complete",
     Message: "v1.2.3 deployed",
 })
@@ -69,10 +69,10 @@ err := client.Send(ctx, &wirepusher.SendOptions{
 Configure client with functional options:
 
 ```go
-client := wirepusher.NewClient("abc12345",
-    wirepusher.WithTimeout(60*time.Second),
-    wirepusher.WithMaxRetries(5),
-    wirepusher.WithAPIURL("https://custom.api.com"),
+client := pincho.NewClient("abc12345",
+    pincho.WithTimeout(60*time.Second),
+    pincho.WithMaxRetries(5),
+    pincho.WithAPIURL("https://custom.api.com"),
 )
 ```
 
@@ -82,14 +82,14 @@ Use `errors.Is()` and `errors.As()` patterns:
 
 ```go
 err := client.Send(ctx, options)
-if errors.Is(err, wirepusher.ErrAuth) {
+if errors.Is(err, pincho.ErrAuth) {
     log.Println("Authentication failed")
-} else if errors.Is(err, wirepusher.ErrRateLimit) {
+} else if errors.Is(err, pincho.ErrRateLimit) {
     log.Println("Rate limited")
 }
 
 // Extract error details
-var rateLimitErr *wirepusher.RateLimitError
+var rateLimitErr *pincho.RateLimitError
 if errors.As(err, &rateLimitErr) {
     log.Printf("Retry after %d seconds", rateLimitErr.RetryAfter)
 }
@@ -148,7 +148,7 @@ if client.LastRateLimit != nil {
 AI-powered notification generation:
 
 ```go
-response, err := client.NotifAI(ctx, &wirepusher.NotifAIOptions{
+response, err := client.NotifAI(ctx, &pincho.NotifAIOptions{
     Text: "deployment finished, v2.1.3 is live",
 })
 // response.Notification contains AI-generated title, message, tags
@@ -159,7 +159,7 @@ response, err := client.NotifAI(ctx, &wirepusher.NotifAIOptions{
 Message encryption matching mobile app:
 
 ```go
-err := client.Send(ctx, &wirepusher.SendOptions{
+err := client.Send(ctx, &pincho.SendOptions{
     Title:              "Security Alert",
     Message:            "Sensitive data",
     Type:               "security",
@@ -173,19 +173,19 @@ Environment variable support with functional options override:
 
 ```go
 // Auto-load from environment variables
-client := wirepusher.NewClient("")  // reads WIREPUSHER_TOKEN
+client := pincho.NewClient("")  // reads PINCHO_TOKEN
 
 // Or explicit configuration
-client := wirepusher.NewClient("abc12345",
-    wirepusher.WithTimeout(60*time.Second),
-    wirepusher.WithMaxRetries(5),
+client := pincho.NewClient("abc12345",
+    pincho.WithTimeout(60*time.Second),
+    pincho.WithMaxRetries(5),
 )
 ```
 
 **Environment Variables**:
-- `WIREPUSHER_TOKEN` - API token (used if constructor token is empty)
-- `WIREPUSHER_TIMEOUT` - Request timeout in seconds (default: 30)
-- `WIREPUSHER_MAX_RETRIES` - Maximum retry attempts (default: 3)
+- `PINCHO_TOKEN` - API token (used if constructor token is empty)
+- `PINCHO_TIMEOUT` - Request timeout in seconds (default: 30)
+- `PINCHO_MAX_RETRIES` - Maximum retry attempts (default: 3)
 
 ## Dependencies
 
@@ -227,8 +227,8 @@ client := wirepusher.NewClient("abc12345",
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/wirepusher/wirepusher-go.git
-cd wirepusher-go
+git clone https://gitlab.com/pincho-app/pincho-go.git
+cd pincho-go
 
 # No dependencies to install!
 go mod verify
@@ -308,7 +308,7 @@ go build -v ./examples/basic           # Build specific example
 Bearer token via `Authorization` header:
 ```
 Authorization: Bearer {token}
-User-Agent: wirepusher-go/{version}
+User-Agent: pincho-go/{version}
 ```
 
 ### Response Format
@@ -369,12 +369,12 @@ The library parses the nested error format and builds descriptive error messages
 
 **Not Needed**:
 - ❌ Config file support (not standard for libraries)
-- ❌ CLI tool (separate wirepusher-cli project)
+- ❌ CLI tool (separate pincho-cli project)
 
 ## Links
 
-- **Repository**: https://gitlab.com/wirepusher/wirepusher-go
-- **Issues**: https://gitlab.com/wirepusher/wirepusher-go/-/issues
-- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go
-- **API Docs**: https://wirepusher.dev/help
-- **App**: https://wirepusher.dev
+- **Repository**: https://gitlab.com/pincho-app/pincho-go
+- **Issues**: https://gitlab.com/pincho-app/pincho-go/-/issues
+- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/pincho-app/pincho-go
+- **API Docs**: https://pincho.app/help
+- **App**: https://pincho.app

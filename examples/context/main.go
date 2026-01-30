@@ -7,18 +7,18 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/wirepusher/wirepusher-go"
+	"gitlab.com/pincho-app/pincho-go"
 )
 
 func main() {
 	// Get token from environment variable
-	token := os.Getenv("WIREPUSHER_TOKEN")
+	token := os.Getenv("PINCHO_TOKEN")
 	if token == "" {
 		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token)
+	client := pincho.NewClient(token)
 
 	// Example 1: With timeout
 	fmt.Println("Example 1: Sending with 5-second timeout...")
@@ -58,9 +58,9 @@ func main() {
 
 	// Example 3: Custom timeout on client
 	fmt.Println("\nExample 3: Using client with custom timeout...")
-	customClient := wirepusher.NewClient(
+	customClient := pincho.NewClient(
 		token,
-		wirepusher.WithTimeout(10*time.Second),
+		pincho.WithTimeout(10*time.Second),
 	)
 
 	err = customClient.SendSimple(context.Background(), "Test with Custom Client Timeout", "Client configured with 10-second timeout")

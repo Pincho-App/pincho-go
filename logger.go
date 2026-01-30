@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// Logger is an interface for logging within the WirePusher client.
+// Logger is an interface for logging within the Pincho client.
 // This allows users to integrate their own logging solution.
 //
 // The interface matches Go's standard log.Logger methods for compatibility.
@@ -39,8 +39,8 @@ type StdLogger struct {
 //
 // Example:
 //
-//	logger := wirepusher.NewStdLogger("wirepusher")
-//	client := wirepusher.NewClient("abc12345", wirepusher.WithLogger(logger))
+//	logger := pincho.NewStdLogger("pincho")
+//	client := pincho.NewClient("abc12345", pincho.WithLogger(logger))
 func NewStdLogger(prefix string) *StdLogger {
 	if prefix != "" {
 		prefix = prefix + ": "
@@ -64,8 +64,8 @@ func (l *StdLogger) Println(v ...interface{}) {
 //
 // Example with standard logger:
 //
-//	logger := wirepusher.NewStdLogger("wirepusher")
-//	client := wirepusher.NewClient("abc12345", wirepusher.WithLogger(logger))
+//	logger := pincho.NewStdLogger("pincho")
+//	client := pincho.NewClient("abc12345", pincho.WithLogger(logger))
 //
 // Example with custom logger:
 //
@@ -78,7 +78,7 @@ func (l *StdLogger) Println(v ...interface{}) {
 //	}
 //
 //	logger := &MyLogger{}
-//	client := wirepusher.NewClient("abc12345", wirepusher.WithLogger(logger))
+//	client := pincho.NewClient("abc12345", pincho.WithLogger(logger))
 func WithLogger(logger Logger) ClientOption {
 	return func(c *Client) {
 		c.Logger = logger

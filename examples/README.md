@@ -1,18 +1,18 @@
-# WirePusher Go Client Library Examples
+# Pincho Go Client Library Examples
 
-This directory contains runnable examples demonstrating various features of the WirePusher Go Client Library.
+This directory contains runnable examples demonstrating various features of the Pincho Go Client Library.
 
 ## Prerequisites
 
 Before running any examples, you need:
 
-1. A WirePusher account with API token
+1. A Pincho account with API token
 2. Environment variable set:
    ```bash
-   export WIREPUSHER_TOKEN="abc12345"  # Your 8-character token
+   export PINCHO_TOKEN="abc12345"  # Your 8-character token
 
    # For encryption examples, also set:
-   export WIREPUSHER_ENCRYPTION_PASSWORD="your_password"
+   export PINCHO_ENCRYPTION_PASSWORD="your_password"
    ```
 
 ## Running Examples
@@ -122,18 +122,18 @@ import (
     "log"
     "os"
 
-    "gitlab.com/wirepusher/wirepusher-go"
+    "gitlab.com/pincho/pincho-go"
 )
 
 func main() {
     // 1. Get token from environment
-    token := os.Getenv("WIREPUSHER_TOKEN")
+    token := os.Getenv("PINCHO_TOKEN")
     if token == "" {
         token = "abc12345" // Fallback for testing
     }
 
     // 2. Create client
-    client := wirepusher.NewClient(token)
+    client := pincho.NewClient(token)
 
     // 3. Send notification
     err := client.SendSimple(context.Background(), "Title", "Message")
@@ -166,14 +166,14 @@ To use the SDK in your own project:
 
 1. Install the SDK:
    ```bash
-   go get gitlab.com/wirepusher/wirepusher-go
+   go get gitlab.com/pincho/pincho-go
    ```
 
 2. Import and use:
    ```go
-   import "gitlab.com/wirepusher/wirepusher-go"
+   import "gitlab.com/pincho/pincho-go"
 
-   client := wirepusher.NewClient(token)
+   client := pincho.NewClient(token)
    err := client.SendSimple(ctx, "Title", "Message")
    ```
 
@@ -182,10 +182,10 @@ To use the SDK in your own project:
 - **Environment Variables**: Use a `.env` file or a tool like `direnv` to manage your credentials
 - **Error Handling**: Always check errors and use type assertions to handle different error types
 - **Context**: Always pass a context (use `context.Background()` if you don't need cancellation/timeout)
-- **Fallback Token**: Examples use "abc12345" as fallback if WIREPUSHER_TOKEN is not set
+- **Fallback Token**: Examples use "abc12345" as fallback if PINCHO_TOKEN is not set
 
 ## Additional Resources
 
-- [API Reference](https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go)
+- [API Reference](https://pkg.go.dev/gitlab.com/pincho/pincho-go)
 - [Main README](../README.md)
 - [Contributing Guidelines](../CONTRIBUTING.md)

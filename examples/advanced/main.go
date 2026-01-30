@@ -6,21 +6,21 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/wirepusher/wirepusher-go"
+	"gitlab.com/pincho-app/pincho-go"
 )
 
 func main() {
 	// Get token from environment variable
-	token := os.Getenv("WIREPUSHER_TOKEN")
+	token := os.Getenv("PINCHO_TOKEN")
 	if token == "" {
 		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token)
+	client := pincho.NewClient(token)
 
 	// Send notification with all options
-	err := client.Send(context.Background(), &wirepusher.SendOptions{
+	err := client.Send(context.Background(), &pincho.SendOptions{
 		Title:     "Deployment Complete",
 		Message:   "Version 2.1.0 has been successfully deployed to production",
 		Type:      "deployment",
@@ -36,7 +36,7 @@ func main() {
 	fmt.Println("Advanced notification sent successfully!")
 
 	// Send another notification with different type
-	err = client.Send(context.Background(), &wirepusher.SendOptions{
+	err = client.Send(context.Background(), &pincho.SendOptions{
 		Title:   "Server Alert",
 		Message: "CPU usage is above 90% on web-server-01",
 		Type:    "alert",

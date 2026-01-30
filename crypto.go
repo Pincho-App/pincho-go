@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import (
 	"crypto/aes"
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// customBase64Encode encodes bytes using custom Base64 encoding matching WirePusher app.
+// customBase64Encode encodes bytes using custom Base64 encoding matching Pincho app.
 //
 // Converts standard Base64 characters to custom encoding:
 //   - '+' → '-'
@@ -60,7 +60,7 @@ func pkcs7Pad(data []byte, blockSize int) []byte {
 
 // EncryptMessage encrypts text using AES-128-CBC with custom Base64 encoding.
 //
-// Encryption process matching WirePusher app:
+// Encryption process matching Pincho app:
 //  1. Derive key from password using SHA1
 //  2. Apply PKCS7 padding to plaintext
 //  3. Encrypt using AES-128-CBC with provided IV

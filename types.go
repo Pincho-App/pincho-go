@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import "time"
 
@@ -34,7 +34,7 @@ type SendOptions struct {
 	EncryptionPassword string   `json:"-"` // Not sent to API, used locally for encryption
 }
 
-// SendResponse is the response from the WirePusher API for a send operation.
+// SendResponse is the response from the Pincho API for a send operation.
 type SendResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
@@ -63,7 +63,7 @@ type NotificationFilter struct {
 	Limit int      `json:"limit,omitempty"`
 }
 
-// Notification represents a stored notification from the WirePusher API.
+// Notification represents a stored notification from the Pincho API.
 type Notification struct {
 	ID        string   `json:"id"`
 	Title     string   `json:"title"`

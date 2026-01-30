@@ -1,11 +1,11 @@
-// Package main demonstrates encrypted notifications with WirePusher Go SDK.
+// Package main demonstrates encrypted notifications with Pincho Go SDK.
 //
 // This example shows how to send encrypted notifications where only the message
 // content is encrypted. Title, type, tags, and other metadata remain unencrypted
 // for filtering and display purposes.
 //
 // Requirements:
-//   - WirePusher app installed with configured notification type
+//   - Pincho app installed with configured notification type
 //   - Encryption password set for the notification type in app settings
 package main
 
@@ -15,31 +15,31 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/wirepusher/wirepusher-go"
+	"gitlab.com/pincho-app/pincho-go"
 )
 
 func main() {
 	// Get credentials from environment variables (recommended)
-	token := os.Getenv("WIREPUSHER_TOKEN")
-	encryptionPassword := os.Getenv("WIREPUSHER_ENCRYPTION_PASSWORD")
+	token := os.Getenv("PINCHO_TOKEN")
+	encryptionPassword := os.Getenv("PINCHO_ENCRYPTION_PASSWORD")
 
 	if token == "" {
 		token = "abc12345" // Fallback for testing
 	}
 
 	if encryptionPassword == "" {
-		log.Fatal("Error: WIREPUSHER_ENCRYPTION_PASSWORD environment variable not set\n" +
-			"Set it with: export WIREPUSHER_ENCRYPTION_PASSWORD='your_password'")
+		log.Fatal("Error: PINCHO_ENCRYPTION_PASSWORD environment variable not set\n" +
+			"Set it with: export PINCHO_ENCRYPTION_PASSWORD='your_password'")
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token)
+	client := pincho.NewClient(token)
 
 	ctx := context.Background()
 
 	// Example 1: Basic encrypted notification (personal)
 	fmt.Println("Example 1: Sending encrypted notification to personal device...")
-	err := client.Send(ctx, &wirepusher.SendOptions{
+	err := client.Send(ctx, &pincho.SendOptions{
 		Title:              "Secure Alert",                        // NOT encrypted (for display)
 		Message:            "Your credit card was charged $49.99", // Encrypted
 		Type:               "secure",                              // NOT encrypted (needed for password lookup)
@@ -52,7 +52,7 @@ func main() {
 
 	// Example 2: Encrypted notification with all optional parameters
 	fmt.Println("Example 2: Encrypted notification with tags and metadata...")
-	err = client.Send(ctx, &wirepusher.SendOptions{
+	err = client.Send(ctx, &pincho.SendOptions{
 		Title:              "Security Alert",
 		Message:            "Unauthorized login attempt detected from IP 192.168.1.100",
 		Type:               "security",
@@ -66,7 +66,7 @@ func main() {
 
 	// Example 3: Encrypted notification with image and action URL
 	fmt.Println("Example 3: Encrypted notification with additional metadata...")
-	err = client.Send(ctx, &wirepusher.SendOptions{
+	err = client.Send(ctx, &pincho.SendOptions{
 		Title:              "Payment Alert",
 		Message:            "Your subscription has been renewed for $9.99",
 		Type:               "billing",
@@ -84,7 +84,7 @@ func main() {
 	fmt.Println("Example 4: Error handling...")
 
 	// Unencrypted notification (no password provided)
-	err = client.Send(ctx, &wirepusher.SendOptions{
+	err = client.Send(ctx, &pincho.SendOptions{
 		Title:   "Unencrypted Message",
 		Message: "This message is sent in plain text",
 		Type:    "info",
@@ -96,7 +96,7 @@ func main() {
 	fmt.Println("  ✓ Unencrypted notification sent successfully")
 
 	// Encrypted notification (with password)
-	err = client.Send(ctx, &wirepusher.SendOptions{
+	err = client.Send(ctx, &pincho.SendOptions{
 		Title:              "Encrypted Message",
 		Message:            "This message is encrypted",
 		Type:               "secure",

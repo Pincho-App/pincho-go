@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import (
 	"bytes"

@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"os"
 
-	"gitlab.com/wirepusher/wirepusher-go"
+	"gitlab.com/pincho-app/pincho-go"
 )
 
 func main() {
 	// Get token from environment variable
-	token := os.Getenv("WIREPUSHER_TOKEN")
+	token := os.Getenv("PINCHO_TOKEN")
 	if token == "" {
 		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token)
+	client := pincho.NewClient(token)
 
 	// Example 1: Handle validation error
 	fmt.Println("Example 1: Validation error (empty title)")
-	err := client.Send(context.Background(), &wirepusher.SendOptions{
+	err := client.Send(context.Background(), &pincho.SendOptions{
 		Title:   "", // Empty title will cause validation error
 		Message: "Test message",
 	})
@@ -28,7 +28,7 @@ func main() {
 
 	// Example 2: Handle validation error (empty message)
 	fmt.Println("\nExample 2: Validation error (empty message)")
-	err = client.Send(context.Background(), &wirepusher.SendOptions{
+	err = client.Send(context.Background(), &pincho.SendOptions{
 		Title:   "Test title",
 		Message: "", // Empty message will cause validation error
 	})
@@ -36,7 +36,7 @@ func main() {
 
 	// Example 3: Handle auth error (invalid token)
 	fmt.Println("\nExample 3: Auth error (trying with invalid token)")
-	invalidClient := wirepusher.NewClient("invalid-token")
+	invalidClient := pincho.NewClient("invalid-token")
 	err = invalidClient.SendSimple(context.Background(), "Test", "This will fail")
 	handleError(err)
 
@@ -58,19 +58,19 @@ func handleError(err error) {
 
 	// Type switch to handle different error types
 	switch e := err.(type) {
-	case *wirepusher.ValidationError:
+	case *pincho.ValidationError:
 		fmt.Printf("✗ Validation Error: %s (status: %d)\n", e.Message, e.StatusCode)
 		fmt.Println("  → Check your input parameters (title, message, etc.)")
 
-	case *wirepusher.AuthError:
+	case *pincho.AuthError:
 		fmt.Printf("✗ Authentication Error: %s (status: %d)\n", e.Message, e.StatusCode)
 		fmt.Println("  → Check your token")
 
-	case *wirepusher.RateLimitError:
+	case *pincho.RateLimitError:
 		fmt.Printf("✗ Rate Limit Error: %s (status: %d)\n", e.Message, e.StatusCode)
 		fmt.Println("  → You're sending too many requests. Wait and try again.")
 
-	case *wirepusher.Error:
+	case *pincho.Error:
 		fmt.Printf("✗ API Error: %s", e.Message)
 		if e.StatusCode > 0 {
 			fmt.Printf(" (status: %d)", e.StatusCode)

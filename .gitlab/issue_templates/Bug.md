@@ -41,11 +41,11 @@ import (
     "context"
     "log"
 
-    "gitlab.com/wirepusher/wirepusher-go"
+    "gitlab.com/pincho/pincho-go"
 )
 
 func main() {
-    client := wirepusher.NewClient("token", "user-id")
+    client := pincho.NewClient("token", "user-id")
 
     // Code that demonstrates the issue
 }

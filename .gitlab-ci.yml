@@ -1,0 +1,148 @@
+# GitLab CI configuration for Pincho Go SDK
+#
+# Triggers:
+#   - Push to any branch: Runs tests, quality checks, and build verification
+#   - Push tag v*.*.*: Runs full pipeline and sends release notification
+#
+# Note: Go modules are distributed via Git, not a package registry.
+# Users install with: go get gitlab.com/pincho-app/pincho-go@v1.0.0
+
+stages:
+  - lint
+  - test
+  - build
+  - notify
+
+variables:
+  GOPROXY: "https://proxy.golang.org,direct"
+
+# Cache Go modules across jobs
+.go-cache: &go-cache
+  cache:
+    key: go-modules-$CI_COMMIT_REF_SLUG
+    paths:
+      - .go/pkg/mod/
+    policy: pull-push
+
+# Default Go image
+default:
+  image: golang:1.23
+
+# =============================================================================
+# LINT STAGE
+# =============================================================================
+
+lint:format:
+  stage: lint
+  <<: *go-cache
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  script:
+    - echo "=== Checking code formatting ==="
+    - UNFORMATTED=$(gofmt -l .)
+    - if [ -n "$UNFORMATTED" ]; then echo "The following files are not formatted:" && echo "$UNFORMATTED" && echo "Run 'gofmt -w .' to fix formatting" && exit 1; fi
+    - echo "All files are properly formatted"
+
+lint:vet:
+  stage: lint
+  <<: *go-cache
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  script:
+    - echo "=== Downloading dependencies ==="
+    - go mod download
+    - echo "=== Running static analysis (go vet) ==="
+    - go vet ./...
+    - echo "Static analysis passed"
+
+lint:verify:
+  stage: lint
+  <<: *go-cache
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  script:
+    - echo "=== Verifying Go dependencies ==="
+    - go mod download
+    - go mod verify
+    - echo "Dependencies verified"
+
+# =============================================================================
+# TEST STAGE
+# =============================================================================
+
+test:
+  stage: test
+  <<: *go-cache
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  script:
+    - echo "=== Downloading dependencies ==="
+    - go mod download
+    - echo "=== Running tests with race detector ==="
+    - go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+    - echo ""
+    - echo "=== Checking test coverage ==="
+    - go tool cover -func=coverage.out | tail -10
+    - COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+    - echo "Total coverage:${COV}%"
+    - if [ $(echo "$COV < 90" | bc) -eq 1 ]; then echo "Coverage ${COV}% is below 90% threshold" && exit 1; fi
+    - echo "Coverage meets 90% threshold"
+  coverage: '/Total coverage:([\d\.]+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+    paths:
+      - coverage.out
+    expire_in: 7 days
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+
+build:
+  stage: build
+  <<: *go-cache
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  script:
+    - echo "=== Downloading dependencies ==="
+    - go mod download
+    - echo "=== Building package ==="
+    - go build -v ./...
+    - echo "Package build successful"
+    - echo ""
+    - echo "=== Verifying examples compile ==="
+    - go build -v ./examples/basic && echo "basic example OK"
+    - go build -v ./examples/advanced && echo "advanced example OK"
+    - go build -v ./examples/context && echo "context example OK"
+    - go build -v ./examples/errors && echo "errors example OK"
+    - go build -v ./examples/encryption && echo "encryption example OK"
+    - go build -v ./examples/rate-limits && echo "rate-limits example OK"
+    - echo ""
+    - echo "All examples compile successfully"
+
+# =============================================================================
+# NOTIFY STAGE (tags only)
+# =============================================================================
+
+notify:
+  stage: notify
+  image: curlimages/curl:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+|-beta\.[0-9]+)?$/
+  script:
+    - echo "=== Git tag detected:$CI_COMMIT_TAG ==="
+    - echo "=== Verifying required files ==="
+    - test -f go.mod && echo "go.mod exists" || (echo "go.mod missing" && exit 1)
+    - test -f README.md && echo "README.md exists" || (echo "README.md missing" && exit 1)
+    - test -f LICENSE && echo "LICENSE exists" || (echo "LICENSE missing" && exit 1)
+    - echo ""
+    - echo "Go module is now available via:"
+    - echo "  go get gitlab.com/pincho-app/pincho-go@$CI_COMMIT_TAG"
+    - echo ""
+    - echo "=== Sending release notification via NotifAI ==="
+    - 'curl -s -X POST https://api.pincho.app/notifai -H "Authorization: Bearer $PINCHO_TOKEN" -H "Content-Type: application/json" -d "{\"text\": \"Pincho Go SDK $CI_COMMIT_TAG released successfully. Install via go get gitlab.com/pincho-app/pincho-go@$CI_COMMIT_TAG\", \"type\": \"release\"}"'
+    - echo ""
+    - echo "Release notification sent via NotifAI"

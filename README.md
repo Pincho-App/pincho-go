@@ -1,24 +1,24 @@
-# WirePusher Go Library
+# Pincho Go Library
 
-Official Go client for [WirePusher](https://wirepusher.dev) push notifications.
+Official Go client for [Pincho](https://pincho.app) push notifications.
 
 ## Installation
 
 ```bash
-go get gitlab.com/wirepusher/wirepusher-go
+go get gitlab.com/pincho-app/pincho-go
 ```
 
 ## Quick Start
 
 ```go
-import "gitlab.com/wirepusher/wirepusher-go"
+import "gitlab.com/pincho-app/pincho-go"
 
-// Auto-load token from WIREPUSHER_TOKEN env var
-client := wirepusher.NewClient("")
+// Auto-load token from PINCHO_TOKEN env var
+client := pincho.NewClient("")
 err := client.SendSimple(ctx, "Deploy Complete", "Version 1.2.3 deployed")
 
 // Or provide token explicitly
-client := wirepusher.NewClient("YOUR_TOKEN")
+client := pincho.NewClient("YOUR_TOKEN")
 err := client.SendSimple(ctx, "Alert", "Server CPU at 95%")
 ```
 
@@ -26,7 +26,7 @@ err := client.SendSimple(ctx, "Alert", "Server CPU at 95%")
 
 ```go
 // Full parameters
-err := client.Send(ctx, &wirepusher.SendOptions{
+err := client.Send(ctx, &pincho.SendOptions{
     Title:     "Deploy Complete",
     Message:   "Version 1.2.3 deployed",
     Type:      "deployment",
@@ -36,13 +36,13 @@ err := client.Send(ctx, &wirepusher.SendOptions{
 })
 
 // AI-powered notifications (NotifAI)
-response, err := client.NotifAI(ctx, &wirepusher.NotifAIOptions{
+response, err := client.NotifAI(ctx, &pincho.NotifAIOptions{
     Text: "deployment finished, v2.1.3 is live",
 })
 // response.Notification contains AI-generated title, message, tags
 
 // Encrypted messages
-err := client.Send(ctx, &wirepusher.SendOptions{
+err := client.Send(ctx, &pincho.SendOptions{
     Title:              "Security Alert",
     Message:            "Sensitive data",
     Type:               "security",
@@ -54,15 +54,15 @@ err := client.Send(ctx, &wirepusher.SendOptions{
 
 ```go
 // Environment variables (recommended)
-// WIREPUSHER_TOKEN - API token (required if not passed to constructor)
-// WIREPUSHER_TIMEOUT - Request timeout in seconds (default: 30)
-// WIREPUSHER_MAX_RETRIES - Retry attempts (default: 3)
+// PINCHO_TOKEN - API token (required if not passed to constructor)
+// PINCHO_TIMEOUT - Request timeout in seconds (default: 30)
+// PINCHO_MAX_RETRIES - Retry attempts (default: 3)
 
 // Or explicit configuration
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     "abc12345",
-    wirepusher.WithTimeout(60*time.Second),
-    wirepusher.WithMaxRetries(5),
+    pincho.WithTimeout(60*time.Second),
+    pincho.WithMaxRetries(5),
 )
 ```
 
@@ -74,14 +74,14 @@ Use sentinel errors with `errors.Is()` or type assertions with `errors.As()`:
 err := client.Send(ctx, options)
 if err != nil {
     // Check error type with errors.Is()
-    if errors.Is(err, wirepusher.ErrAuth) {
+    if errors.Is(err, pincho.ErrAuth) {
         log.Printf("Authentication failed")
-    } else if errors.Is(err, wirepusher.ErrRateLimit) {
+    } else if errors.Is(err, pincho.ErrRateLimit) {
         log.Printf("Rate limited")
     }
 
     // Or extract error details with errors.As()
-    var rateLimitErr *wirepusher.RateLimitError
+    var rateLimitErr *pincho.RateLimitError
     if errors.As(err, &rateLimitErr) {
         log.Printf("Retry after %d seconds", rateLimitErr.RetryAfter)
     }
@@ -111,9 +111,9 @@ if info := client.LastRateLimit; info != nil {
 ## Links
 
 - **Get Token**: App → Settings → Help → copy token
-- **Documentation**: https://wirepusher.dev/help
-- **Repository**: https://gitlab.com/wirepusher/wirepusher-go
-- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go
+- **Documentation**: https://pincho.app/help
+- **Repository**: https://gitlab.com/pincho-app/pincho-go
+- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/pincho-app/pincho-go
 
 ## License
 

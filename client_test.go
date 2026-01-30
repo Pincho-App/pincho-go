@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import (
 	"context"
@@ -126,8 +126,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("reads token from env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TOKEN", "env_token_123")
-		defer os.Unsetenv("WIREPUSHER_TOKEN")
+		os.Setenv("PINCHO_TOKEN", "env_token_123")
+		defer os.Unsetenv("PINCHO_TOKEN")
 
 		client := NewClient("")
 
@@ -137,8 +137,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("reads timeout from env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TIMEOUT", "60")
-		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+		os.Setenv("PINCHO_TIMEOUT", "60")
+		defer os.Unsetenv("PINCHO_TIMEOUT")
 
 		client := NewClient("abc12345")
 
@@ -149,8 +149,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("reads max retries from env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_MAX_RETRIES", "10")
-		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+		os.Setenv("PINCHO_MAX_RETRIES", "10")
+		defer os.Unsetenv("PINCHO_MAX_RETRIES")
 
 		client := NewClient("abc12345")
 
@@ -160,8 +160,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("explicit token overrides env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TOKEN", "env_token_123")
-		defer os.Unsetenv("WIREPUSHER_TOKEN")
+		os.Setenv("PINCHO_TOKEN", "env_token_123")
+		defer os.Unsetenv("PINCHO_TOKEN")
 
 		client := NewClient("explicit_token")
 
@@ -171,8 +171,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("option overrides env var timeout", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TIMEOUT", "60")
-		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+		os.Setenv("PINCHO_TIMEOUT", "60")
+		defer os.Unsetenv("PINCHO_TIMEOUT")
 
 		client := NewClient("abc12345", WithTimeout(120*time.Second))
 
@@ -183,8 +183,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("option overrides env var max retries", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_MAX_RETRIES", "10")
-		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+		os.Setenv("PINCHO_MAX_RETRIES", "10")
+		defer os.Unsetenv("PINCHO_MAX_RETRIES")
 
 		client := NewClient("abc12345", WithMaxRetries(20))
 
@@ -194,8 +194,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("ignores invalid timeout env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TIMEOUT", "invalid")
-		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+		os.Setenv("PINCHO_TIMEOUT", "invalid")
+		defer os.Unsetenv("PINCHO_TIMEOUT")
 
 		client := NewClient("abc12345")
 
@@ -205,8 +205,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("ignores negative timeout env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_TIMEOUT", "-5")
-		defer os.Unsetenv("WIREPUSHER_TIMEOUT")
+		os.Setenv("PINCHO_TIMEOUT", "-5")
+		defer os.Unsetenv("PINCHO_TIMEOUT")
 
 		client := NewClient("abc12345")
 
@@ -216,8 +216,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("ignores invalid max retries env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_MAX_RETRIES", "invalid")
-		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+		os.Setenv("PINCHO_MAX_RETRIES", "invalid")
+		defer os.Unsetenv("PINCHO_MAX_RETRIES")
 
 		client := NewClient("abc12345")
 
@@ -227,8 +227,8 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("ignores negative max retries env var", func(t *testing.T) {
-		os.Setenv("WIREPUSHER_MAX_RETRIES", "-5")
-		defer os.Unsetenv("WIREPUSHER_MAX_RETRIES")
+		os.Setenv("PINCHO_MAX_RETRIES", "-5")
+		defer os.Unsetenv("PINCHO_MAX_RETRIES")
 
 		client := NewClient("abc12345")
 
@@ -316,7 +316,7 @@ func TestClient_Send(t *testing.T) {
 			}
 
 			// Verify User-Agent header
-			expectedUA := "wirepusher-go/" + Version
+			expectedUA := "pincho-go/" + Version
 			if r.Header.Get("User-Agent") != expectedUA {
 				t.Errorf("expected User-Agent '%s', got '%s'", expectedUA, r.Header.Get("User-Agent"))
 			}
@@ -821,7 +821,7 @@ func TestEncryption(t *testing.T) {
 func TestErrorTypes(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		err := &Error{Message: "test error", StatusCode: 500}
-		expected := "wirepusher: test error (status: 500)"
+		expected := "pincho: test error (status: 500)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -829,7 +829,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("Error without status code", func(t *testing.T) {
 		err := &Error{Message: "test error", StatusCode: 0}
-		expected := "wirepusher: test error"
+		expected := "pincho: test error"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -837,7 +837,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("AuthError", func(t *testing.T) {
 		err := &AuthError{Message: "unauthorized", StatusCode: 401}
-		expected := "wirepusher auth error: unauthorized (status: 401)"
+		expected := "pincho auth error: unauthorized (status: 401)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -845,7 +845,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("ValidationError", func(t *testing.T) {
 		err := &ValidationError{Message: "invalid input", StatusCode: 400}
-		expected := "wirepusher validation error: invalid input (status: 400)"
+		expected := "pincho validation error: invalid input (status: 400)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -853,7 +853,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("RateLimitError", func(t *testing.T) {
 		err := &RateLimitError{Message: "rate limit exceeded", StatusCode: 429}
-		expected := "wirepusher rate limit error: rate limit exceeded (status: 429)"
+		expected := "pincho rate limit error: rate limit exceeded (status: 429)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -861,7 +861,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("ServerError", func(t *testing.T) {
 		err := &ServerError{Message: "internal server error", StatusCode: 500}
-		expected := "wirepusher server error: internal server error (status: 500)"
+		expected := "pincho server error: internal server error (status: 500)"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -870,7 +870,7 @@ func TestErrorTypes(t *testing.T) {
 	t.Run("NetworkError", func(t *testing.T) {
 		originalErr := fmt.Errorf("connection refused")
 		err := &NetworkError{Message: "request failed", Err: originalErr}
-		expected := "wirepusher network error: request failed: connection refused"
+		expected := "pincho network error: request failed: connection refused"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}
@@ -878,7 +878,7 @@ func TestErrorTypes(t *testing.T) {
 
 	t.Run("NetworkError without wrapped error", func(t *testing.T) {
 		err := &NetworkError{Message: "request failed", Err: nil}
-		expected := "wirepusher network error: request failed"
+		expected := "pincho network error: request failed"
 		if err.Error() != expected {
 			t.Errorf("expected '%s', got '%s'", expected, err.Error())
 		}

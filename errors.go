@@ -1,4 +1,4 @@
-package wirepusher
+package pincho
 
 import (
 	"errors"
@@ -8,19 +8,19 @@ import (
 // Sentinel errors for use with errors.Is().
 var (
 	// ErrAuth is returned for authentication errors (401/403).
-	ErrAuth = errors.New("wirepusher: authentication error")
+	ErrAuth = errors.New("pincho: authentication error")
 
 	// ErrValidation is returned for validation errors (400).
-	ErrValidation = errors.New("wirepusher: validation error")
+	ErrValidation = errors.New("pincho: validation error")
 
 	// ErrRateLimit is returned for rate limit errors (429).
-	ErrRateLimit = errors.New("wirepusher: rate limit error")
+	ErrRateLimit = errors.New("pincho: rate limit error")
 
 	// ErrServer is returned for server errors (5xx).
-	ErrServer = errors.New("wirepusher: server error")
+	ErrServer = errors.New("pincho: server error")
 
 	// ErrNetwork is returned for network/connection errors.
-	ErrNetwork = errors.New("wirepusher: network error")
+	ErrNetwork = errors.New("pincho: network error")
 )
 
 // Error represents a general WirePusher API error.
@@ -31,9 +31,9 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e.StatusCode > 0 {
-		return fmt.Sprintf("wirepusher: %s (status: %d)", e.Message, e.StatusCode)
+		return fmt.Sprintf("pincho: %s (status: %d)", e.Message, e.StatusCode)
 	}
-	return fmt.Sprintf("wirepusher: %s", e.Message)
+	return fmt.Sprintf("pincho: %s", e.Message)
 }
 
 // IsRetryable returns false for generic errors.
@@ -49,7 +49,7 @@ type ServerError struct {
 }
 
 func (e *ServerError) Error() string {
-	return fmt.Sprintf("wirepusher server error: %s (status: %d)", e.Message, e.StatusCode)
+	return fmt.Sprintf("pincho server error: %s (status: %d)", e.Message, e.StatusCode)
 }
 
 // IsRetryable returns true - server errors should be retried.
@@ -70,9 +70,9 @@ type NetworkError struct {
 
 func (e *NetworkError) Error() string {
 	if e.Err != nil {
-		return fmt.Sprintf("wirepusher network error: %s: %v", e.Message, e.Err)
+		return fmt.Sprintf("pincho network error: %s: %v", e.Message, e.Err)
 	}
-	return fmt.Sprintf("wirepusher network error: %s", e.Message)
+	return fmt.Sprintf("pincho network error: %s", e.Message)
 }
 
 // IsRetryable returns true - network errors should be retried.
@@ -97,7 +97,7 @@ type AuthError struct {
 }
 
 func (e *AuthError) Error() string {
-	return fmt.Sprintf("wirepusher auth error: %s (status: %d)", e.Message, e.StatusCode)
+	return fmt.Sprintf("pincho auth error: %s (status: %d)", e.Message, e.StatusCode)
 }
 
 // IsRetryable returns false - authentication errors are not retryable.
@@ -117,7 +117,7 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	return fmt.Sprintf("wirepusher validation error: %s (status: %d)", e.Message, e.StatusCode)
+	return fmt.Sprintf("pincho validation error: %s (status: %d)", e.Message, e.StatusCode)
 }
 
 // IsRetryable returns false - validation errors are not retryable.
@@ -138,7 +138,7 @@ type RateLimitError struct {
 }
 
 func (e *RateLimitError) Error() string {
-	return fmt.Sprintf("wirepusher rate limit error: %s (status: %d)", e.Message, e.StatusCode)
+	return fmt.Sprintf("pincho rate limit error: %s (status: %d)", e.Message, e.StatusCode)
 }
 
 // IsRetryable returns true - rate limit errors should be retried with backoff.

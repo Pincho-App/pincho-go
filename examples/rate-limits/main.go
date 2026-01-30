@@ -7,18 +7,18 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/wirepusher/wirepusher-go"
+	"gitlab.com/pincho-app/pincho-go"
 )
 
 func main() {
 	// Get token from environment variable
-	token := os.Getenv("WIREPUSHER_TOKEN")
+	token := os.Getenv("PINCHO_TOKEN")
 	if token == "" {
 		token = "abc12345" // Fallback for testing
 	}
 
 	// Create client
-	client := wirepusher.NewClient(token)
+	client := pincho.NewClient(token)
 
 	ctx := context.Background()
 

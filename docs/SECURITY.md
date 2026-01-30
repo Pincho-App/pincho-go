@@ -11,7 +11,7 @@ We release patches for security vulnerabilities in the following versions:
 
 ## Reporting a Vulnerability
 
-The WirePusher team takes security bugs seriously. We appreciate your efforts to responsibly disclose your findings.
+The Pincho team takes security bugs seriously. We appreciate your efforts to responsibly disclose your findings.
 
 ### How to Report
 
@@ -19,7 +19,7 @@ The WirePusher team takes security bugs seriously. We appreciate your efforts to
 
 Instead, please report security vulnerabilities via email to:
 
-**support@wirepusher.dev**
+**support@pincho.dev**
 
 ### What to Include
 
@@ -53,7 +53,7 @@ After you submit a report:
 
 ### For Users
 
-When using the WirePusher Go Client Library:
+When using the Pincho Go Client Library:
 
 1. **Keep the SDK updated** to the latest version
 2. **Never commit credentials** to version control
@@ -67,11 +67,11 @@ When using the WirePusher Go Client Library:
 
 ```go
 // ❌ Bad - Hardcoded credentials
-client := wirepusher.NewClient("abc12345")
+client := pincho.NewClient("abc12345")
 
 // ✅ Good - Environment variables
-token := os.Getenv("WIREPUSHER_TOKEN")
-client := wirepusher.NewClient(token)
+token := os.Getenv("PINCHO_TOKEN")
+client := pincho.NewClient(token)
 ```
 
 ### Error Handling
@@ -87,9 +87,9 @@ if err != nil {
 err := client.Send(ctx, options)
 if err != nil {
     switch e := err.(type) {
-    case *wirepusher.ValidationError:
+    case *pincho.ValidationError:
         log.Printf("Validation error: %s", e.Message)
-    case *wirepusher.AuthError:
+    case *pincho.AuthError:
         log.Println("Authentication failed - check credentials")
     default:
         log.Println("Notification failed - see logs for details")
@@ -154,7 +154,7 @@ err := client.Send(ctx, options)
 
 ### Network Communication
 
-- All communication with WirePusher API is over HTTPS
+- All communication with Pincho API is over HTTPS
 - The SDK uses the Go standard library `net/http` which respects system-level TLS/SSL settings
 - Certificate validation is handled by the Go runtime
 - Minimum TLS 1.2 is enforced by default
@@ -213,7 +213,7 @@ We thank the following individuals for responsibly disclosing security vulnerabi
 
 For security-related questions that aren't reporting vulnerabilities:
 
-- Email: support@wirepusher.dev
-- General questions: support@wirepusher.dev
+- Email: support@pincho.dev
+- General questions: support@pincho.dev
 
-Thank you for helping keep WirePusher and its users safe!
+Thank you for helping keep Pincho and its users safe!

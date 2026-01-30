@@ -1,6 +1,6 @@
-# Contributing to WirePusher Go Client Library
+# Contributing to Pincho Go Client Library
 
-Thank you for your interest in contributing to the WirePusher Go Client Library! We welcome contributions from the community.
+Thank you for your interest in contributing to the Pincho Go Client Library! We welcome contributions from the community.
 
 ## Table of Contents
 
@@ -201,7 +201,7 @@ Fixes #456
 git push origin feature/your-feature-name
 
 # Create MR on GitLab
-# Go to: https://gitlab.com/wirepusher/wirepusher-go/-/merge_requests/new
+# Go to: https://gitlab.com/pincho/pincho-go/-/merge_requests/new
 ```
 
 ## Pull Request Process
@@ -401,25 +401,25 @@ func assertEqual(t *testing.T, got, want interface{}) {
 All exported types and functions must have godoc comments:
 
 ```go
-// Client is the WirePusher API client.
+// Client is the Pincho API client.
 //
 // Use NewClient() to create a new instance.
 type Client struct {
-    // Token is the WirePusher API token (required).
+    // Token is the Pincho API token (required).
     Token string
 
-    // UserID is the WirePusher user ID (required).
+    // UserID is the Pincho user ID (required).
     UserID string
 }
 
-// NewClient creates a new WirePusher client.
+// NewClient creates a new Pincho client.
 //
 // The token and userID parameters are required.
 // Optional configuration can be provided using ClientOption functions.
 //
 // Example:
 //
-//	client := wirepusher.NewClient("token", "user-id")
+//	client := pincho.NewClient("token", "user-id")
 func NewClient(token, userID string, opts ...ClientOption) *Client
 ```
 
@@ -458,7 +458,7 @@ For every change, add an entry to CHANGELOG.md:
 
 If you have questions about contributing:
 - Open a discussion on GitLab
-- Email support@wirepusher.com
+- Email support@pincho.com
 - Check existing issues and MRs
 
-Thank you for contributing to WirePusher Go Client Library!
+Thank you for contributing to Pincho Go Client Library!

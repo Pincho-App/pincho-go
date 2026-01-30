@@ -1,14 +1,14 @@
 # Advanced Usage Guide
 
-This guide covers advanced features of the WirePusher Go client library.
+This guide covers advanced features of the Pincho Go client library.
 
 ## Rate Limit Monitoring
 
 The client automatically tracks rate limit information from API responses. After each successful request, you can inspect `client.LastRateLimit` to see your current quota:
 
 ```go
-client := wirepusher.NewClient("your-token")
-err := client.Send(ctx, &wirepusher.SendOptions{
+client := pincho.NewClient("your-token")
+err := client.Send(ctx, &pincho.SendOptions{
     Title:   "Alert",
     Message: "Server CPU high",
 })
@@ -44,15 +44,15 @@ When you hit the rate limit (HTTP 429), the client intelligently handles the `Re
 
 ```go
 // Configure retry behavior
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     "your-token",
-    wirepusher.WithMaxRetries(5), // Default is 3
+    pincho.WithMaxRetries(5), // Default is 3
 )
 
 // Rate limit handling is automatic
 err := client.Send(ctx, options)
 if err != nil {
-    if rateLimitErr, ok := err.(*wirepusher.RateLimitError); ok {
+    if rateLimitErr, ok := err.(*pincho.RateLimitError); ok {
         // Only reached if all retries exhausted
         log.Printf("Rate limit exceeded after retries. Retry-After: %ds", rateLimitErr.RetryAfter)
     }
@@ -73,23 +73,23 @@ if err != nil {
 
 ```go
 // Set timeout during client creation
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     "your-token",
-    wirepusher.WithTimeout(60*time.Second), // 60 second timeout
+    pincho.WithTimeout(60*time.Second), // 60 second timeout
 )
 ```
 
 ### Environment Variable Configuration
 
 ```bash
-export WIREPUSHER_TIMEOUT=120  # 120 seconds
-export WIREPUSHER_MAX_RETRIES=5
+export PINCHO_TIMEOUT=120  # 120 seconds
+export PINCHO_MAX_RETRIES=5
 ```
 
 ```go
 // Client automatically respects environment variables
-client := wirepusher.NewClient("")  // Uses WIREPUSHER_TOKEN from env
-// Also uses WIREPUSHER_TIMEOUT and WIREPUSHER_MAX_RETRIES if set
+client := pincho.NewClient("")  // Uses PINCHO_TOKEN from env
+// Also uses PINCHO_TIMEOUT and PINCHO_MAX_RETRIES if set
 ```
 
 ### Per-Request Timeout (Context)
@@ -118,9 +118,9 @@ httpClient := &http.Client{
     },
 }
 
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     "your-token",
-    wirepusher.WithHTTPClient(httpClient),
+    pincho.WithHTTPClient(httpClient),
 )
 ```
 
@@ -132,27 +132,27 @@ client := wirepusher.NewClient(
 err := client.Send(ctx, options)
 if err != nil {
     switch e := err.(type) {
-    case *wirepusher.ValidationError:
+    case *pincho.ValidationError:
         // Invalid input (400)
         log.Printf("Validation failed: %s", e.Message)
         // Fix input and retry
 
-    case *wirepusher.AuthError:
+    case *pincho.AuthError:
         // Invalid token (401/403)
         log.Printf("Authentication failed: %s", e.Message)
         // Check token, do not retry
 
-    case *wirepusher.RateLimitError:
+    case *pincho.RateLimitError:
         // Rate limit exceeded (429)
         log.Printf("Rate limited: %s (retry after %ds)", e.Message, e.RetryAfter)
         // Wait and retry later
 
-    case *wirepusher.ServerError:
+    case *pincho.ServerError:
         // Server error (5xx) - retryable
         log.Printf("Server error: %s", e.Message)
         // Already retried automatically
 
-    case *wirepusher.NetworkError:
+    case *pincho.NetworkError:
         // Connection issue - retryable
         if originalErr := e.Unwrap(); originalErr != nil {
             log.Printf("Network error: %v", originalErr)
@@ -169,7 +169,7 @@ if err != nil {
 
 ```go
 err := client.Send(ctx, options)
-if err != nil && wirepusher.IsErrorRetryable(err) {
+if err != nil && pincho.IsErrorRetryable(err) {
     log.Println("Error was retryable but all attempts exhausted")
 }
 ```
@@ -218,9 +218,9 @@ func (l *DebugLogger) Error(msg string) {
 }
 
 // Use with client
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     "your-token",
-    wirepusher.WithLogger(&DebugLogger{}),
+    pincho.WithLogger(&DebugLogger{}),
 )
 ```
 
@@ -229,7 +229,7 @@ client := wirepusher.NewClient(
 Messages can be encrypted client-side before sending:
 
 ```go
-err := client.Send(ctx, &wirepusher.SendOptions{
+err := client.Send(ctx, &pincho.SendOptions{
     Title:              "Secure Alert",           // NOT encrypted
     Message:            "Sensitive data here",    // ENCRYPTED
     Type:               "security",               // NOT encrypted
@@ -275,12 +275,12 @@ All errors implement specific types with the `IsRetryable() bool` method:
 
 Client configuration uses the functional options pattern:
 ```go
-client := wirepusher.NewClient(
+client := pincho.NewClient(
     token,
-    wirepusher.WithTimeout(30*time.Second),
-    wirepusher.WithMaxRetries(5),
-    wirepusher.WithHTTPClient(customClient),
-    wirepusher.WithLogger(logger),
+    pincho.WithTimeout(30*time.Second),
+    pincho.WithMaxRetries(5),
+    pincho.WithHTTPClient(customClient),
+    pincho.WithLogger(logger),
 )
 ```
 
@@ -305,9 +305,9 @@ tags := []string{"  production ", "", "backend", "  "}
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WIREPUSHER_TOKEN` | API token | Required if not passed to constructor |
-| `WIREPUSHER_TIMEOUT` | Request timeout in seconds | 30 |
-| `WIREPUSHER_MAX_RETRIES` | Maximum retry attempts | 3 |
+| `PINCHO_TOKEN` | API token | Required if not passed to constructor |
+| `PINCHO_TIMEOUT` | Request timeout in seconds | 30 |
+| `PINCHO_MAX_RETRIES` | Maximum retry attempts | 3 |
 
 ## Best Practices
 

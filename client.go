@@ -1,9 +1,9 @@
-// Package wirepusher provides a Go client for the WirePusher push notification API.
+// Package pincho provides a Go client for the Pincho push notification API.
 //
 // Example usage:
 //
 //	// Create client with token
-//	client := wirepusher.NewClient("abc12345")
+//	client := pincho.NewClient("abc12345")
 //
 //	// Simple send
 //	err := client.SendSimple(ctx, "Hello", "World")
@@ -12,14 +12,14 @@
 //	}
 //
 //	// Advanced send with options
-//	err = client.Send(ctx, &wirepusher.SendOptions{
+//	err = client.Send(ctx, &pincho.SendOptions{
 //	    Title:     "Server Alert",
 //	    Message:   "CPU usage high",
 //	    Type:      "alert",
 //	    Tags:      []string{"monitoring", "production"},
 //	    ActionURL: "https://dashboard.example.com",
 //	})
-package wirepusher
+package pincho
 
 import (
 	"bytes"
@@ -37,8 +37,8 @@ const (
 	// Version is the library version.
 	Version = "1.0.0-alpha.7"
 
-	// DefaultAPIURL is the default WirePusher API endpoint.
-	DefaultAPIURL = "https://api.wirepusher.dev/send"
+	// DefaultAPIURL is the default Pincho API endpoint.
+	DefaultAPIURL = "https://api.pincho.app/send"
 
 	// DefaultTimeout is the default HTTP request timeout.
 	DefaultTimeout = 30 * time.Second
@@ -47,12 +47,12 @@ const (
 	MaxBackoff = 30 * time.Second
 )
 
-// Client is the WirePusher API client.
+// Client is the Pincho API client.
 type Client struct {
-	// Token is the WirePusher API token.
+	// Token is the Pincho API token.
 	Token string
 
-	// APIURL is the WirePusher API endpoint (defaults to DefaultAPIURL).
+	// APIURL is the Pincho API endpoint (defaults to DefaultAPIURL).
 	APIURL string
 
 	// HTTPClient is the HTTP client used for requests.
@@ -80,7 +80,7 @@ type ClientOption func(*Client)
 func WithAPIURL(url string) ClientOption {
 	return func(c *Client) {
 		if url == "" {
-			panic("wirepusher: API URL cannot be empty")
+			panic("pincho: API URL cannot be empty")
 		}
 		c.APIURL = url
 	}
@@ -91,7 +91,7 @@ func WithAPIURL(url string) ClientOption {
 func WithHTTPClient(client *http.Client) ClientOption {
 	return func(c *Client) {
 		if client == nil {
-			panic("wirepusher: HTTP client cannot be nil")
+			panic("pincho: HTTP client cannot be nil")
 		}
 		c.HTTPClient = client
 	}
@@ -102,7 +102,7 @@ func WithHTTPClient(client *http.Client) ClientOption {
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
 		if timeout <= 0 {
-			panic("wirepusher: timeout must be positive")
+			panic("pincho: timeout must be positive")
 		}
 		c.HTTPClient.Timeout = timeout
 	}
@@ -113,53 +113,53 @@ func WithTimeout(timeout time.Duration) ClientOption {
 func WithMaxRetries(maxRetries int) ClientOption {
 	return func(c *Client) {
 		if maxRetries < 0 {
-			panic("wirepusher: max retries cannot be negative")
+			panic("pincho: max retries cannot be negative")
 		}
 		c.MaxRetries = maxRetries
 	}
 }
 
-// NewClient creates a new WirePusher client.
+// NewClient creates a new Pincho client.
 //
-// The token parameter is your WirePusher API token. If empty, it reads from
-// WIREPUSHER_TOKEN environment variable.
+// The token parameter is your Pincho API token. If empty, it reads from
+// PINCHO_TOKEN environment variable.
 //
 // Environment variables (used as defaults):
-//   - WIREPUSHER_TOKEN: API token (required if token param is empty)
-//   - WIREPUSHER_TIMEOUT: Request timeout in seconds (default: 30)
-//   - WIREPUSHER_MAX_RETRIES: Maximum retry attempts (default: 3)
+//   - PINCHO_TOKEN: API token (required if token param is empty)
+//   - PINCHO_TIMEOUT: Request timeout in seconds (default: 30)
+//   - PINCHO_MAX_RETRIES: Maximum retry attempts (default: 3)
 //
 // Examples:
 //
-//	// Auto-load token from WIREPUSHER_TOKEN
-//	client := wirepusher.NewClient("")
+//	// Auto-load token from PINCHO_TOKEN
+//	client := pincho.NewClient("")
 //
 //	// Explicit token
-//	client := wirepusher.NewClient("abc12345")
+//	client := pincho.NewClient("abc12345")
 //
 //	// With custom timeout
-//	client := wirepusher.NewClient(
+//	client := pincho.NewClient(
 //	    "abc12345",
-//	    wirepusher.WithTimeout(10*time.Second),
+//	    pincho.WithTimeout(10*time.Second),
 //	)
 //
 //	// With custom HTTP client
-//	client := wirepusher.NewClient(
+//	client := pincho.NewClient(
 //	    "abc12345",
-//	    wirepusher.WithHTTPClient(customHTTPClient),
+//	    pincho.WithHTTPClient(customHTTPClient),
 //	)
 func NewClient(token string, opts ...ClientOption) *Client {
 	// Auto-load token from environment variable if not provided
 	if token == "" {
-		token = os.Getenv("WIREPUSHER_TOKEN")
+		token = os.Getenv("PINCHO_TOKEN")
 	}
 	if token == "" {
-		panic("wirepusher: token is required (set WIREPUSHER_TOKEN or pass to NewClient)")
+		panic("pincho: token is required (set PINCHO_TOKEN or pass to NewClient)")
 	}
 
 	// Default timeout (can be overridden by env var or option)
 	timeout := DefaultTimeout
-	if envTimeout := os.Getenv("WIREPUSHER_TIMEOUT"); envTimeout != "" {
+	if envTimeout := os.Getenv("PINCHO_TIMEOUT"); envTimeout != "" {
 		if seconds, err := strconv.Atoi(envTimeout); err == nil && seconds > 0 {
 			timeout = time.Duration(seconds) * time.Second
 		}
@@ -167,7 +167,7 @@ func NewClient(token string, opts ...ClientOption) *Client {
 
 	// Default max retries (can be overridden by env var or option)
 	maxRetries := 3
-	if envRetries := os.Getenv("WIREPUSHER_MAX_RETRIES"); envRetries != "" {
+	if envRetries := os.Getenv("PINCHO_MAX_RETRIES"); envRetries != "" {
 		if retries, err := strconv.Atoi(envRetries); err == nil && retries >= 0 {
 			maxRetries = retries
 		}
@@ -283,7 +283,7 @@ func (c *Client) SendSimple(ctx context.Context, title, message string) error {
 //
 // Example:
 //
-//	err := client.Send(ctx, &wirepusher.SendOptions{
+//	err := client.Send(ctx, &pincho.SendOptions{
 //	    Title:     "Server Alert",
 //	    Message:   "CPU usage at 95%",
 //	    Type:      "alert",
@@ -366,7 +366,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.Token)
-		req.Header.Set("User-Agent", "wirepusher-go/"+Version)
+		req.Header.Set("User-Agent", "pincho-go/"+Version)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -436,7 +436,7 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 //
 // Example:
 //
-//	response, err := client.NotifAI(ctx, &wirepusher.NotifAIOptions{
+//	response, err := client.NotifAI(ctx, &pincho.NotifAIOptions{
 //	    Text: "deployment finished successfully, v2.1.3 is live on prod",
 //	    Type: "deployment", // Optional override
 //	})
@@ -489,7 +489,7 @@ func (c *Client) NotifAI(ctx context.Context, options *NotifAIOptions) (*NotifAI
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.Token)
-		req.Header.Set("User-Agent", "wirepusher-go/"+Version)
+		req.Header.Set("User-Agent", "pincho-go/"+Version)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {

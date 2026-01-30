@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the WirePusher Go Client Library will be documented in this file.
+All notable changes to the Pincho Go Client Library will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of WirePusher Go Client Library
+- Initial release of Pincho Go Client Library
 - Core client implementation with `NewClient()`
 - `Send()` method with full options support
 - `SendSimple()` convenience method
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial stable release.
 
 ### Features
-- Send push notifications via WirePusher API
+- Send push notifications via Pincho API
 - Context support for timeouts and cancellation
 - Customizable HTTP client
 - Type-safe Go API
@@ -65,6 +65,6 @@ We use [Semantic Versioning](https://semver.org/):
 ## Support
 
 For questions about specific versions:
-- Check the [documentation](https://pkg.go.dev/gitlab.com/wirepusher/wirepusher-go)
-- Open an [issue](https://gitlab.com/wirepusher/wirepusher-go/-/issues)
-- Email support@wirepusher.com
+- Check the [documentation](https://pkg.go.dev/gitlab.com/pincho/pincho-go)
+- Open an [issue](https://gitlab.com/pincho/pincho-go/-/issues)
+- Email support@pincho.com
