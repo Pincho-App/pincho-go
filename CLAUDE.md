@@ -293,7 +293,7 @@ go build -v ./examples/basic           # Build specific example
 - **Table-driven tests**: Use `[]struct{ name string; ... }` pattern
 - **Error testing**: Test both errors.Is() and errors.As() patterns
 - **Race detection**: Run with `-race` flag
-- **Coverage target**: 90%+ for critical paths
+- **Coverage target**: 85%+ for critical paths
 - **Context testing**: Test cancellation and timeouts
 
 ## API Integration

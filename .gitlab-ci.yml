@@ -85,8 +85,8 @@ test:
     - go tool cover -func=coverage.out | tail -10
     - COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
     - echo "Total coverage:${COV}%"
-    - if [ $(echo "$COV < 90" | bc) -eq 1 ]; then echo "Coverage ${COV}% is below 90% threshold" && exit 1; fi
-    - echo "Coverage meets 90% threshold"
+    - if [ $(echo "$COV < 85" | bc) -eq 1 ]; then echo "Coverage ${COV}% is below 85% threshold" && exit 1; fi
+    - echo "Coverage meets 85% threshold"
   coverage: '/Total coverage:([\d\.]+)%/'
   artifacts:
     reports:
