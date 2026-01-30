@@ -38,6 +38,11 @@ func TestNewClient(t *testing.T) {
 	})
 
 	t.Run("panics with empty token", func(t *testing.T) {
+		// Clear environment variable to ensure panic
+		oldToken := os.Getenv("PINCHO_TOKEN")
+		os.Unsetenv("PINCHO_TOKEN")
+		defer os.Setenv("PINCHO_TOKEN", oldToken)
+
 		defer func() {
 			if r := recover(); r == nil {
 				t.Error("expected NewClient to panic when token is empty")
