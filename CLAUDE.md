@@ -30,7 +30,7 @@ pincho-go/
 │   ├── advanced/          # Full options
 │   ├── context/           # Context cancellation/timeout
 │   ├── errors/            # Error handling patterns
-│   ├── encryption/        # Message encryption
+│   ├── encryption/        # AES-128-CBC encryption (title, message, URLs)
 │   └── rate-limits/       # Rate limit monitoring
 ├── docs/                  # Documentation
 │   ├── ADVANCED.md        # Rate limits, config, encryption

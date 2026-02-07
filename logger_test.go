@@ -206,7 +206,7 @@ func TestLoggingInSendWithEncryption(t *testing.T) {
 	output := buf.String()
 
 	// Should log encryption
-	if !strings.Contains(output, "DEBUG: Encrypting message") {
+	if !strings.Contains(output, "DEBUG: Encrypting title, message, imageURL, actionURL") {
 		t.Errorf("Expected encryption log, got: %s", output)
 	}
 }

@@ -87,11 +87,11 @@ go run main.go
 ```
 
 **What it demonstrates:**
-- Encrypting message content with password
-- Only message is encrypted (title/type/tags remain plaintext)
+- Encrypting title, message, imageURL, actionURL with password
+- Type and tags remain unencrypted (needed for filtering/routing)
 - Password management with environment variables
 - Multiple encryption scenarios
-- Backward compatibility (unencrypted messages still work)
+- Backward compatibility (unencrypted notifications still work)
 - Uses only Go standard library (no external dependencies)
 
 ### Rate Limit Monitoring

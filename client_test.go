@@ -806,7 +806,12 @@ func TestEncryption(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		// Verify encrypted message is different from plaintext
+		// Verify title is encrypted (not plaintext)
+		if receivedBody["title"] == "Test" {
+			t.Error("title should be encrypted, got plaintext")
+		}
+
+		// Verify message is encrypted (not plaintext)
 		if receivedBody["message"] == "Secret message" {
 			t.Error("message should be encrypted, got plaintext")
 		}
@@ -819,6 +824,55 @@ func TestEncryption(t *testing.T) {
 		ivHex, ok := receivedBody["iv"].(string)
 		if !ok || len(ivHex) != 32 {
 			t.Errorf("IV should be 32-character hex string, got: %v", receivedBody["iv"])
+		}
+	})
+
+	t.Run("send_with_encryption_all_fields", func(t *testing.T) {
+		var receivedBody map[string]interface{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &receivedBody)
+			w.WriteHeader(200)
+			w.Write([]byte(`{"status": "success"}`))
+		}))
+		defer server.Close()
+
+		client := NewClient("abc12345", WithAPIURL(server.URL))
+
+		err := client.Send(context.Background(), &SendOptions{
+			Title:              "Test Title",
+			Message:            "Secret message",
+			Type:               "secure",
+			Tags:               []string{"test", "encryption"},
+			ImageURL:           "https://example.com/image.png",
+			ActionURL:          "https://example.com/action",
+			EncryptionPassword: "test_password",
+		})
+
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		// Verify all encrypted fields are not plaintext
+		if receivedBody["title"] == "Test Title" {
+			t.Error("title should be encrypted")
+		}
+		if receivedBody["message"] == "Secret message" {
+			t.Error("message should be encrypted")
+		}
+		if receivedBody["imageURL"] == "https://example.com/image.png" {
+			t.Error("imageURL should be encrypted")
+		}
+		if receivedBody["actionURL"] == "https://example.com/action" {
+			t.Error("actionURL should be encrypted")
+		}
+
+		// Verify type and tags remain unencrypted
+		if receivedBody["type"] != "secure" {
+			t.Errorf("type should remain unencrypted, got: %v", receivedBody["type"])
+		}
+		if tags, ok := receivedBody["tags"].([]interface{}); !ok || len(tags) != 2 {
+			t.Errorf("tags should remain unencrypted, got: %v", receivedBody["tags"])
 		}
 	})
 }

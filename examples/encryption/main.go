@@ -1,8 +1,8 @@
 // Package main demonstrates encrypted notifications with Pincho Go SDK.
 //
-// This example shows how to send encrypted notifications where only the message
-// content is encrypted. Title, type, tags, and other metadata remain unencrypted
-// for filtering and display purposes.
+// This example shows how to send encrypted notifications where sensitive content
+// is encrypted. The encrypted fields are: title, message, imageURL, actionURL.
+// Type and tags remain unencrypted for filtering and routing purposes.
 //
 // Requirements:
 //   - Pincho app installed with configured notification type
@@ -37,10 +37,10 @@ func main() {
 
 	ctx := context.Background()
 
-	// Example 1: Basic encrypted notification (personal)
-	fmt.Println("Example 1: Sending encrypted notification to personal device...")
+	// Example 1: Basic encrypted notification
+	fmt.Println("Example 1: Sending encrypted notification...")
 	err := client.Send(ctx, &pincho.SendOptions{
-		Title:              "Secure Alert",                        // NOT encrypted (for display)
+		Title:              "Secure Alert",                        // Encrypted
 		Message:            "Your credit card was charged $49.99", // Encrypted
 		Type:               "secure",                              // NOT encrypted (needed for password lookup)
 		EncryptionPassword: encryptionPassword,                    // Must match app configuration
@@ -51,12 +51,12 @@ func main() {
 	fmt.Println("  ✓ Sent successfully")
 
 	// Example 2: Encrypted notification with all optional parameters
-	fmt.Println("Example 2: Encrypted notification with tags and metadata...")
+	fmt.Println("Example 2: Encrypted notification with tags...")
 	err = client.Send(ctx, &pincho.SendOptions{
-		Title:              "Security Alert",
-		Message:            "Unauthorized login attempt detected from IP 192.168.1.100",
-		Type:               "security",
-		Tags:               []string{"critical", "security", "login"}, // NOT encrypted
+		Title:              "Security Alert",                                         // Encrypted
+		Message:            "Unauthorized login attempt detected from IP 192.168.1.100", // Encrypted
+		Type:               "security",                                               // NOT encrypted (for filtering)
+		Tags:               []string{"critical", "security", "login"},                // NOT encrypted (for filtering)
 		EncryptionPassword: encryptionPassword,
 	})
 	if err != nil {
@@ -65,23 +65,23 @@ func main() {
 	fmt.Println("  ✓ Sent successfully")
 
 	// Example 3: Encrypted notification with image and action URL
-	fmt.Println("Example 3: Encrypted notification with additional metadata...")
+	fmt.Println("Example 3: Encrypted notification with URLs...")
 	err = client.Send(ctx, &pincho.SendOptions{
-		Title:              "Payment Alert",
-		Message:            "Your subscription has been renewed for $9.99",
-		Type:               "billing",
-		Tags:               []string{"payment", "subscription"},
+		Title:              "Payment Alert",                                  // Encrypted
+		Message:            "Your subscription has been renewed for $9.99",   // Encrypted
+		Type:               "billing",                                        // NOT encrypted
+		Tags:               []string{"payment", "subscription"},              // NOT encrypted
 		EncryptionPassword: encryptionPassword,
-		ImageURL:           "https://example.com/payment-icon.png", // NOT encrypted
-		ActionURL:          "https://example.com/billing/history",  // NOT encrypted
+		ImageURL:           "https://example.com/payment-icon.png",           // Encrypted
+		ActionURL:          "https://example.com/billing/history",            // Encrypted
 	})
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
 	}
 	fmt.Println("  ✓ Sent successfully")
 
-	// Example 4: Error handling with encryption
-	fmt.Println("Example 4: Error handling...")
+	// Example 4: Mixed encrypted and unencrypted notifications
+	fmt.Println("Example 4: Comparing encrypted vs unencrypted...")
 
 	// Unencrypted notification (no password provided)
 	err = client.Send(ctx, &pincho.SendOptions{
@@ -109,10 +109,10 @@ func main() {
 
 	fmt.Println("✓ All examples completed!")
 	fmt.Println("\nKey points:")
-	fmt.Println("  - Only the 'message' field is encrypted")
-	fmt.Println("  - Title, type, tags, imageURL, actionURL remain unencrypted")
+	fmt.Println("  - Encrypted fields: title, message, imageURL, actionURL")
+	fmt.Println("  - NOT encrypted: type, tags (needed for filtering/routing)")
 	fmt.Println("  - Encryption password must match type configuration in app")
-	fmt.Println("  - Each encrypted message gets a unique random IV")
-	fmt.Println("  - Unencrypted messages work normally (backward compatible)")
+	fmt.Println("  - Each encrypted notification gets a unique random IV")
+	fmt.Println("  - Unencrypted notifications work normally (backward compatible)")
 	fmt.Println("  - Uses only Go standard library (crypto/aes, crypto/cipher, crypto/sha1)")
 }

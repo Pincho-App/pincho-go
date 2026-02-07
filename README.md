@@ -41,7 +41,7 @@ response, err := client.NotifAI(ctx, &pincho.NotifAIOptions{
 })
 // response.Notification contains AI-generated title, message, tags
 
-// Encrypted messages
+// Encrypted notifications (title, message, URLs encrypted; type, tags unencrypted)
 err := client.Send(ctx, &pincho.SendOptions{
     Title:              "Security Alert",
     Message:            "Sensitive data",

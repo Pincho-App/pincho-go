@@ -23,7 +23,8 @@ type RateLimitInfo struct {
 //   - Tags: List of tags for categorization (max 10 tags, 128 chars each)
 //   - ImageURL: URL to an image to display with the notification
 //   - ActionURL: URL to open when user taps the notification
-//   - EncryptionPassword: Password for AES-128-CBC encryption (must match type configuration in app)
+//   - EncryptionPassword: Password for AES-128-CBC encryption. Encrypts title, message, imageURL, actionURL.
+//     Type and tags remain unencrypted (needed for filtering/routing). Must match type configuration in app.
 type SendOptions struct {
 	Title              string   `json:"title"`
 	Message            string   `json:"message"`
