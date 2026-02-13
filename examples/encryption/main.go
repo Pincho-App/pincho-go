@@ -53,10 +53,10 @@ func main() {
 	// Example 2: Encrypted notification with all optional parameters
 	fmt.Println("Example 2: Encrypted notification with tags...")
 	err = client.Send(ctx, &pincho.SendOptions{
-		Title:              "Security Alert",                                         // Encrypted
+		Title:              "Security Alert",                                            // Encrypted
 		Message:            "Unauthorized login attempt detected from IP 192.168.1.100", // Encrypted
-		Type:               "security",                                               // NOT encrypted (for filtering)
-		Tags:               []string{"critical", "security", "login"},                // NOT encrypted (for filtering)
+		Type:               "security",                                                  // NOT encrypted (for filtering)
+		Tags:               []string{"critical", "security", "login"},                   // NOT encrypted (for filtering)
 		EncryptionPassword: encryptionPassword,
 	})
 	if err != nil {
@@ -67,13 +67,13 @@ func main() {
 	// Example 3: Encrypted notification with image and action URL
 	fmt.Println("Example 3: Encrypted notification with URLs...")
 	err = client.Send(ctx, &pincho.SendOptions{
-		Title:              "Payment Alert",                                  // Encrypted
-		Message:            "Your subscription has been renewed for $9.99",   // Encrypted
-		Type:               "billing",                                        // NOT encrypted
-		Tags:               []string{"payment", "subscription"},              // NOT encrypted
+		Title:              "Payment Alert",                                // Encrypted
+		Message:            "Your subscription has been renewed for $9.99", // Encrypted
+		Type:               "billing",                                      // NOT encrypted
+		Tags:               []string{"payment", "subscription"},            // NOT encrypted
 		EncryptionPassword: encryptionPassword,
-		ImageURL:           "https://example.com/payment-icon.png",           // Encrypted
-		ActionURL:          "https://example.com/billing/history",            // Encrypted
+		ImageURL:           "https://example.com/payment-icon.png", // Encrypted
+		ActionURL:          "https://example.com/billing/history",  // Encrypted
 	})
 	if err != nil {
 		log.Fatalf("  Error: %v\n", err)
