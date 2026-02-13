@@ -1,3 +1,3 @@
-module gitlab.com/pincho-app/pincho-go
+module github.com/Pincho-App/pincho-go
 
 go 1.18

@@ -58,7 +58,7 @@ We welcome code contributions! Here's how to get started:
 4. Run tests and linting
 5. Commit your changes (follow commit conventions)
 6. Push to your fork
-7. Open a Merge Request
+7. Open a Pull Request
 
 ## Development Setup
 
@@ -71,8 +71,8 @@ We welcome code contributions! Here's how to get started:
 
 ```bash
 # Clone your fork
-git clone git@gitlab.com:your-username/go-sdk.git
-cd go-sdk
+git clone git@github.com:your-username/pincho-go.git
+cd pincho-go
 
 # Download dependencies
 go mod download
@@ -194,14 +194,15 @@ Now returns a ValidationError instead.
 Fixes #456
 ```
 
-### 7. Push and Create MR
+### 7. Push and Create PR
 
 ```bash
 # Push to your fork
 git push origin feature/your-feature-name
 
-# Create MR on GitLab
-# Go to: https://gitlab.com/pincho/pincho-go/-/merge_requests/new
+# Create PR on GitHub
+# Go to: https://github.com/Pincho-App/pincho-go/compare
+# Or use GitHub CLI: gh pr create
 ```
 
 ## Pull Request Process
@@ -218,7 +219,7 @@ git push origin feature/your-feature-name
    - Update examples if needed
    - Add entry to CHANGELOG.md
 
-3. **Fill out the MR template**:
+3. **Fill out the PR template**:
    - Describe the changes
    - Link related issues
    - List breaking changes (if any)
@@ -457,8 +458,8 @@ For every change, add an entry to CHANGELOG.md:
 ## Questions?
 
 If you have questions about contributing:
-- Open a discussion on GitLab
+- Open a discussion on GitHub
 - Email support@pincho.com
-- Check existing issues and MRs
+- Check existing issues and PRs
 
 Thank you for contributing to Pincho Go Client Library!

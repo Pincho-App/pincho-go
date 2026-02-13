@@ -5,13 +5,13 @@ Official Go client for [Pincho](https://pincho.app) push notifications.
 ## Installation
 
 ```bash
-go get gitlab.com/pincho-app/pincho-go
+go get github.com/Pincho-App/pincho-go
 ```
 
 ## Quick Start
 
 ```go
-import "gitlab.com/pincho-app/pincho-go"
+import "github.com/Pincho-App/pincho-go"
 
 // Auto-load token from PINCHO_TOKEN env var
 client := pincho.NewClient("")
@@ -112,8 +112,8 @@ if info := client.LastRateLimit; info != nil {
 
 - **Get Token**: App → Settings → Help → copy token
 - **Documentation**: https://pincho.app/help
-- **Repository**: https://gitlab.com/pincho-app/pincho-go
-- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/pincho-app/pincho-go
+- **Repository**: https://github.com/Pincho-App/pincho-go
+- **pkg.go.dev**: https://pkg.go.dev/github.com/Pincho-App/pincho-go
 
 ## License
 

@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/pincho-app/pincho-go"
+	"github.com/Pincho-App/pincho-go"
 )
 
 func main() {

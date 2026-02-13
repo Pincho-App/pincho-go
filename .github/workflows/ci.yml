@@ -1,0 +1,142 @@
+# GitHub Actions CI for Pincho Go SDK
+#
+# Triggers:
+#   - Push to main: Runs lint, test, and build
+#   - Pull request to main: Runs lint, test, and build
+#   - Push tag v*: Runs full pipeline and sends release notification
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+env:
+  GOPROXY: "https://proxy.golang.org,direct"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Check code formatting
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files are not formatted:"
+            echo "$UNFORMATTED"
+            echo "Run 'gofmt -w .' to fix formatting"
+            exit 1
+          fi
+          echo "All files are properly formatted"
+
+      - name: Run go vet
+        run: |
+          go mod download
+          go vet ./...
+
+      - name: Verify dependencies
+        run: |
+          go mod download
+          go mod verify
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests with race detector
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+
+      - name: Check test coverage
+        run: |
+          go tool cover -func=coverage.out | tail -10
+          COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COV}%"
+          if [ "$(echo "$COV < 85" | bc)" -eq 1 ]; then
+            echo "Coverage ${COV}% is below 85% threshold"
+            exit 1
+          fi
+          echo "Coverage meets 85% threshold"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build package
+        run: go build -v ./...
+
+      - name: Verify examples compile
+        run: |
+          go build -v ./examples/basic && echo "basic example OK"
+          go build -v ./examples/advanced && echo "advanced example OK"
+          go build -v ./examples/context && echo "context example OK"
+          go build -v ./examples/errors && echo "errors example OK"
+          go build -v ./examples/encryption && echo "encryption example OK"
+          go build -v ./examples/rate-limits && echo "rate-limits example OK"
+          echo "All examples compile successfully"
+
+  notify:
+    name: Release Notification
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          test -f go.mod && echo "go.mod exists" || (echo "go.mod missing" && exit 1)
+          test -f README.md && echo "README.md exists" || (echo "README.md missing" && exit 1)
+          test -f LICENSE && echo "LICENSE exists" || (echo "LICENSE missing" && exit 1)
+
+      - name: Send release notification via NotifAI
+        env:
+          PINCHO_TOKEN: ${{ secrets.PINCHO_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "=== Git tag detected: $TAG ==="
+          echo ""
+          echo "Go module is now available via:"
+          echo "  go get github.com/Pincho-App/pincho-go@$TAG"
+          echo ""
+          echo "=== Sending release notification via NotifAI ==="
+          curl -s -X POST https://api.pincho.app/notifai \
+            -H "Authorization: Bearer $PINCHO_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"Pincho Go SDK $TAG released successfully. Install via go get github.com/Pincho-App/pincho-go@$TAG\", \"type\": \"release\"}"
+          echo ""
+          echo "Release notification sent via NotifAI"

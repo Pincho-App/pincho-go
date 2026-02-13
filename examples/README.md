@@ -122,7 +122,7 @@ import (
     "log"
     "os"
 
-    "gitlab.com/pincho/pincho-go"
+    "github.com/Pincho-App/pincho-go"
 )
 
 func main() {
@@ -166,12 +166,12 @@ To use the SDK in your own project:
 
 1. Install the SDK:
    ```bash
-   go get gitlab.com/pincho/pincho-go
+   go get github.com/Pincho-App/pincho-go
    ```
 
 2. Import and use:
    ```go
-   import "gitlab.com/pincho/pincho-go"
+   import "github.com/Pincho-App/pincho-go"
 
    client := pincho.NewClient(token)
    err := client.SendSimple(ctx, "Title", "Message")
@@ -186,6 +186,6 @@ To use the SDK in your own project:
 
 ## Additional Resources
 
-- [API Reference](https://pkg.go.dev/gitlab.com/pincho/pincho-go)
+- [API Reference](https://pkg.go.dev/github.com/Pincho-App/pincho-go)
 - [Main README](../README.md)
 - [Contributing Guidelines](../CONTRIBUTING.md)

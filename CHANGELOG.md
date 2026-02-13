@@ -60,11 +60,11 @@ We use [Semantic Versioning](https://semver.org/):
 2. Update version in documentation
 3. Create Git tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
 4. Push tag: `git push origin v1.0.0`
-5. GitLab CI/CD will handle the release
+5. GitHub Actions will handle the release
 
 ## Support
 
 For questions about specific versions:
-- Check the [documentation](https://pkg.go.dev/gitlab.com/pincho/pincho-go)
-- Open an [issue](https://gitlab.com/pincho/pincho-go/-/issues)
+- Check the [documentation](https://pkg.go.dev/github.com/Pincho-App/pincho-go)
+- Open an [issue](https://github.com/Pincho-App/pincho-go/issues)
 - Email support@pincho.com

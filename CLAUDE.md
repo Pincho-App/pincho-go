@@ -227,7 +227,7 @@ client := pincho.NewClient("abc12345",
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/pincho-app/pincho-go.git
+git clone https://github.com/Pincho-App/pincho-go.git
 cd pincho-go
 
 # No dependencies to install!
@@ -373,8 +373,8 @@ The library parses the nested error format and builds descriptive error messages
 
 ## Links
 
-- **Repository**: https://gitlab.com/pincho-app/pincho-go
-- **Issues**: https://gitlab.com/pincho-app/pincho-go/-/issues
-- **pkg.go.dev**: https://pkg.go.dev/gitlab.com/pincho-app/pincho-go
+- **Repository**: https://github.com/Pincho-App/pincho-go
+- **Issues**: https://github.com/Pincho-App/pincho-go/issues
+- **pkg.go.dev**: https://pkg.go.dev/github.com/Pincho-App/pincho-go
 - **API Docs**: https://pincho.app/help
 - **App**: https://pincho.app

@@ -19,7 +19,7 @@ The Pincho team takes security bugs seriously. We appreciate your efforts to res
 
 Instead, please report security vulnerabilities via email to:
 
-**support@pincho.dev**
+**support@pincho.app**
 
 ### What to Include
 
@@ -213,7 +213,7 @@ We thank the following individuals for responsibly disclosing security vulnerabi
 
 For security-related questions that aren't reporting vulnerabilities:
 
-- Email: support@pincho.dev
-- General questions: support@pincho.dev
+- Email: support@pincho.app
+- General questions: support@pincho.app
 
 Thank you for helping keep Pincho and its users safe!
