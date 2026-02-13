@@ -309,28 +309,17 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	}
 
 	// Handle encryption if password provided
-	// Encrypted fields: title, message, imageURL, actionURL
-	// NOT encrypted: type, tags (needed for filtering/routing)
-	finalTitle := options.Title
+	// Only message is encrypted (title, type, tags, URLs remain visible)
 	finalMessage := options.Message
-	finalImageURL := options.ImageURL
-	finalActionURL := options.ActionURL
 	var ivHex string
 
 	if options.EncryptionPassword != "" {
-		c.logDebug("Encrypting title, message, imageURL, actionURL")
+		c.logDebug("Encrypting message body")
 		iv, ivStr, err := GenerateIV()
 		if err != nil {
 			c.logError(fmt.Sprintf("Failed to generate IV: %v", err))
 			return &Error{Message: fmt.Sprintf("failed to generate IV: %v", err), StatusCode: 0}
 		}
-
-		encryptedTitle, err := EncryptMessage(options.Title, options.EncryptionPassword, iv)
-		if err != nil {
-			c.logError(fmt.Sprintf("Failed to encrypt title: %v", err))
-			return &Error{Message: fmt.Sprintf("failed to encrypt title: %v", err), StatusCode: 0}
-		}
-		finalTitle = encryptedTitle
 
 		encryptedMessage, err := EncryptMessage(options.Message, options.EncryptionPassword, iv)
 		if err != nil {
@@ -338,31 +327,12 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 			return &Error{Message: fmt.Sprintf("failed to encrypt message: %v", err), StatusCode: 0}
 		}
 		finalMessage = encryptedMessage
-
-		if options.ImageURL != "" {
-			encryptedImageURL, err := EncryptMessage(options.ImageURL, options.EncryptionPassword, iv)
-			if err != nil {
-				c.logError(fmt.Sprintf("Failed to encrypt imageURL: %v", err))
-				return &Error{Message: fmt.Sprintf("failed to encrypt imageURL: %v", err), StatusCode: 0}
-			}
-			finalImageURL = encryptedImageURL
-		}
-
-		if options.ActionURL != "" {
-			encryptedActionURL, err := EncryptMessage(options.ActionURL, options.EncryptionPassword, iv)
-			if err != nil {
-				c.logError(fmt.Sprintf("Failed to encrypt actionURL: %v", err))
-				return &Error{Message: fmt.Sprintf("failed to encrypt actionURL: %v", err), StatusCode: 0}
-			}
-			finalActionURL = encryptedActionURL
-		}
-
 		ivHex = ivStr
 	}
 
 	// Build request body
 	body := map[string]interface{}{
-		"title":   finalTitle,
+		"title":   options.Title,
 		"message": finalMessage,
 	}
 
@@ -372,11 +342,11 @@ func (c *Client) Send(ctx context.Context, options *SendOptions) error {
 	if normalizedTags != nil {
 		body["tags"] = normalizedTags
 	}
-	if finalImageURL != "" {
-		body["imageURL"] = finalImageURL
+	if options.ImageURL != "" {
+		body["imageURL"] = options.ImageURL
 	}
-	if finalActionURL != "" {
-		body["actionURL"] = finalActionURL
+	if options.ActionURL != "" {
+		body["actionURL"] = options.ActionURL
 	}
 	if ivHex != "" {
 		body["iv"] = ivHex
