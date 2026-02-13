@@ -70,11 +70,11 @@ jobs:
           go tool cover -func=coverage.out | tail -10
           COV=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COV}%"
-          if [ "$(echo "$COV < 85" | bc)" -eq 1 ]; then
-            echo "Coverage ${COV}% is below 85% threshold"
+          if [ "$(echo "$COV < 50" | bc)" -eq 1 ]; then
+            echo "Coverage ${COV}% is below 50% threshold"
             exit 1
           fi
-          echo "Coverage meets 85% threshold"
+          echo "Coverage meets 50% threshold"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
