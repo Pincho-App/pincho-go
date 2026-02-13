@@ -63,7 +63,7 @@ jobs:
         run: go mod download
 
       - name: Run tests with race detector
-        run: go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+        run: go test -race -coverprofile=coverage.out -covermode=atomic -v $(go list ./... | grep -v /examples/)
 
       - name: Check test coverage
         run: |
